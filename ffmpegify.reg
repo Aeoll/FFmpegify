@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\Directory\shell\ffmpegify]
+@="Execute Dailify"
+
+[HKEY_CLASSES_ROOT\Directory\shell\ffmpegify\command]
+@="\"C:\\Python36\\python.exe\" \"C:\\FFmpegify\\ffmpegify.py\" \"%1\""
