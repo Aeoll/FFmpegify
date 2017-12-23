@@ -14,7 +14,8 @@ def convert(path):
     if( suffix in alltypes ):
         l = len(stem)
         back = stem[::-1]
-        m = re.match( '\d+', back)
+        m = re.search( '\d+', back)
+        # m = re.match( '\d+', back)
         if(m):
             # simple regex match - find digit from the end of the stem (its assumed frame numbers are the last part of a file name)
             sp = m.span(0)
@@ -27,11 +28,12 @@ def convert(path):
 
             # glob for other frames in the folder and find the first frame to use as start number
             preframepart = stem[0:sp2[0]]
+            postframepart = stem[sp2[1]:]            
             frames = sorted(file.parent.glob(preframepart + '*'))
             start_num = int(frames[0].name[sp2[0]:sp2[1]])
 
             # get absolute path to the input file and set the outputfile
-            inputf = stem[0:sp2[0]] + padstring + suffix
+            inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
             outputf = str(file.with_name( '_' + file.parent.name + "_video.mov" ))
 

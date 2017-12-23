@@ -20,7 +20,10 @@ def convert(path):
     if( suffix in alltypes ):
         l = len(stem)
         back = stem[::-1]
-        m = re.match( '\d+', back)
+        # this could be changed to re.match()[0] which would match files like render-0004-hi.png ?
+        # would also need to get the extra text between frame number and extension
+        m = re.search( '\d+', back)
+        # m = re.match( '\d+', back)
         if(m):
             # simple regex match - find digit from the end of the stem (its assumed frame numbers are the last part of a file name)
             sp = m.span(0)
@@ -33,11 +36,12 @@ def convert(path):
 
             # glob for other frames in the folder and find the first frame to use as start number
             preframepart = stem[0:sp2[0]]
+            postframepart = stem[sp2[1]:]
             frames = sorted(file.parent.glob(preframepart + '*'))
             start_num = int(frames[0].name[sp2[0]:sp2[1]])
 
             # get absolute path to the input file and set the outputfile
-            inputf = stem[0:sp2[0]] + padstring + suffix
+            inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
             outputf = str(file.with_name( '_' + file.parent.name + "_video.mov" ))
 
@@ -48,7 +52,7 @@ def convert(path):
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
             cmd.extend(('-c:v', 'libx264'))
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'faster'))
+            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'fast'))
             cmd.extend(('-vf', 'premultiply=inplace=1, scale=trunc(iw/2)*2:trunc(ih/2)*2'))
             cmd.append(outputf)
             subprocess.run(cmd)
