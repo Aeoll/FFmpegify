@@ -13,3 +13,6 @@ A Context Menu addition for Windows for quick conversion of image sequences to v
 - Run ffmpegify.reg - FFmpegify will appear as a context menu item for all filetypes.
 - For guaranteed results the frame number should be directly before the extension. (e.g MySequence.0034.jpg or MySeq2_003.exr)
 - The script will work on any frame number - you do not need to select the fist frame in the sequence. 
+
+# Alternate settings
+- 2 other python files are included which demonstrate alternate ffmpeg settings for output format, conversion speed and bitrate.
