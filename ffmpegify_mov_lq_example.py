@@ -3,12 +3,6 @@ import re
 import sys
 import subprocess
 
-# TODO
-# overwriting existing?
-# couple of version in sub-menu for different codecs/qualities?
-# name video with parent folder name?
-# find and deal with broken edge cases 
-
 def convert(path):
     file = pathlib.Path(path)
     stem = file.stem
@@ -47,8 +41,11 @@ def convert(path):
                 cmd.extend(('-gamma', '2.2'))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
+            # H264 Format
             cmd.extend(('-c:v', 'libx264'))
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'faster'))
+            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', '21', '-preset', 'ultrafast'))
+            # First filter premultiplies to properly handle frames with transparency
+            # Second filter ensure the size is suitable for H264 format (width & height must be divisible by 2)
             cmd.extend(('-vf', 'premultiply=inplace=1, scale=trunc(iw/2)*2:trunc(ih/2)*2'))
             cmd.append(outputf)
             subprocess.run(cmd)
