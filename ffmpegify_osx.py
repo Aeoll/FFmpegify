@@ -3,17 +3,9 @@ import re
 import sys
 import subprocess
 
-FRAME_RATE = 25
-MAX_WIDTH = 1920    # Set to 0 for no maximuim
-MAX_HEIGHT = 1080  # Set to 0 for no maximuim
-CRF = 18
-PRESET = "fast"
-
 # TODO
+# constants at the top for basic settings
 # overwriting existing?
-# couple of version in sub-menu for different codecs/qualities?
-# name video with parent folder name?
-# find and deal with broken edge cases 
 
 def convert(path):
     file = pathlib.Path(path)
@@ -51,16 +43,14 @@ def convert(path):
             inputf_abs = str(file.with_name(inputf))
             outputf = str(file.with_name( '_' + file.parent.name + "_video.mov" ))
 
-            cmd = ['ffmpeg']
-            cmd.extend(('-r', str(FRAME_RATE)))
+            cmd = ['/usr/local/bin/ffmpeg'] # need to use full path to ffmpeg for osx?
+            cmd.extend(('-r', '25'))
             if(suffix in gamma):
                 cmd.extend(('-gamma', '2.2'))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
             cmd.extend(('-c:v', 'libx264'))
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', 'fast'))
-            # scale if exceeding max?
-            # scale=w='if(gt(dar,854/480),min(854,iw*sar),2*trunc(iw*sar*oh/ih/2))':h='if(gt(dar,854/480),2*trunc(ih*ow/iw/sar/2),min(480,ih))'
+            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'fast'))
             cmd.extend(('-vf', 'premultiply=inplace=1, scale=trunc(iw/2)*2:trunc(ih/2)*2'))
             cmd.append(outputf)
             subprocess.run(cmd)
