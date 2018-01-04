@@ -5,6 +5,7 @@
 A Context Menu addition for Windows for quick conversion of image sequences to videos
 - Supports JPG, PNG, TIFF, TGA and EXR sequences (single-layer EXRs only)
 - Supports arbitrary starting frame numbers, image sizes and frame number padding
+- Applies a premultiply filter for better conversion of transparent images  
 
 # Setup
 - Install Python36 to C:/Python36 (Or other location and edit ffmpegify.reg)
