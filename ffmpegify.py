@@ -3,17 +3,15 @@ import re
 import sys
 import subprocess
 
-FRAME_RATE = 25
-MAX_WIDTH = 1920    # Set to 0 for no maximuim
-MAX_HEIGHT = 1080  # Set to 0 for no maximuim
-CRF = 18
-PRESET = "fast"
-
-# TODO
-# overwriting existing?
-# couple of version in sub-menu for different codecs/qualities?
-# name video with parent folder name?
-# find and deal with broken edge cases 
+# =========================
+# Editable Settings
+# =========================
+FRAME_RATE = 25    # Frames per second
+MAX_WIDTH = 1920   # Set to -1 for no maximum width
+MAX_HEIGHT = 1080  # Set to -1 for no maximum height
+CRF = 18           # Quality (bitrate) setting from 1->50. Lower is higher quality 
+PRESET = "faster"  # slow, medium, ultrafast etc
+VIDFORMAT = "mov"  # output format
 
 def convert(path):
     file = pathlib.Path(path)
@@ -26,16 +24,12 @@ def convert(path):
     if( suffix in alltypes ):
         l = len(stem)
         back = stem[::-1]
-        # this could be changed to re.match()[0] which would match files like render-0004-hi.png ?
-        # would also need to get the extra text between frame number and extension
         m = re.search( '\d+', back)
-        # m = re.match( '\d+', back)
         if(m):
-            # simple regex match - find digit from the end of the stem (its assumed frame numbers are the last part of a file name)
+            # simple regex match - find digit from the end of the stem
             sp = m.span(0)
             sp2 = [l-a for a in sp]
             sp2.reverse()
-
             # get zfill for frame num
             padding = sp2[1] - sp2[0]
             padstring = '%' + format(padding, '02') + 'd' # eg %05d
@@ -43,25 +37,31 @@ def convert(path):
             # glob for other frames in the folder and find the first frame to use as start number
             preframepart = stem[0:sp2[0]]
             postframepart = stem[sp2[1]:]
-            frames = sorted(file.parent.glob(preframepart + '*'))
+            frames = sorted(file.parent.glob(preframepart + '*' + postframepart))
             start_num = int(frames[0].name[sp2[0]:sp2[1]])
 
             # get absolute path to the input file and set the outputfile
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
-            outputf = str(file.with_name( '_' + file.parent.name + "_video.mov" ))
+            outputf = str(file.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
 
-            cmd = ['ffmpeg']
+            # create ffmpeg command and call it
+            platform = sys.platform
+            if platform == "win32":
+                cmd = ['ffmpeg']
+            else: # need to use full path to ffmpeg for osx and possibly linux?
+                cmd = ['/usr/local/bin/ffmpeg'] 
+ 
             cmd.extend(('-r', str(FRAME_RATE)))
             if(suffix in gamma):
                 cmd.extend(('-gamma', '2.2'))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
             cmd.extend(('-c:v', 'libx264'))
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', 'fast'))
-            # scale if exceeding max?
-            # scale=w='if(gt(dar,854/480),min(854,iw*sar),2*trunc(iw*sar*oh/ih/2))':h='if(gt(dar,854/480),2*trunc(ih*ow/iw/sar/2),min(480,ih))'
-            cmd.extend(('-vf', 'premultiply=inplace=1, scale=trunc(iw/2)*2:trunc(ih/2)*2'))
+            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+            # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
+            scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+            cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr))
             cmd.append(outputf)
             subprocess.run(cmd)
         else:
