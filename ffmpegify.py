@@ -7,8 +7,8 @@ import subprocess
 # Editable Settings
 # =========================
 FRAME_RATE = 25    # Frames per second
-MAX_WIDTH = 1920   # Set to -1 for no maximum width
-MAX_HEIGHT = 1080  # Set to -1 for no maximum height
+MAX_WIDTH = 1920   # Set to -1 for no maximum width. Max should be divisible by 2
+MAX_HEIGHT = 1080  # Set to -1 for no maximum height. Max should be divisible by 2
 CRF = 18           # Quality (bitrate) setting from 1->50. Lower is higher quality 
 PRESET = "faster"  # slow, medium, ultrafast etc
 VIDFORMAT = "mov"  # output format
@@ -44,6 +44,11 @@ def convert(path):
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
             outputf = str(file.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
+            # if the video already exists create do not overwrite it
+            counter = 1
+            while pathlib.Path(outputf).exists():
+                outputf = str(file.with_name( '_' + file.parent.name + "_video_" + str(counter) + "." + VIDFORMAT ))
+                counter = counter + 1
 
             # create ffmpeg command and call it
             platform = sys.platform
@@ -60,7 +65,23 @@ def convert(path):
             cmd.extend(('-c:v', 'libx264'))
             cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
-            scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+            if MAX_HEIGHT < 0 and MAX_WIDTH < 0:
+                scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
+            elif MAX_WIDTH < 0:
+                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
+            elif MAX_HEIGHT < 0:
+                scalestr = "scale='-2:min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+            else:
+                # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
+                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad="+ str(MAX_WIDTH) +":"+ str(MAX_HEIGHT) +":(ow-iw)/2:(oh-ih)/2"
+                # maybe skip force ratio and do it manually? DOesnt work yet...
+                max_asp = float(MAX_WIDTH)/MAX_HEIGHT
+                A = "min(trunc(iw/2)*2," + str(MAX_WIDTH) + ")"
+                B = "if( gt(ih,"+str(MAX_HEIGHT)+"), trunc(("+str(MAX_HEIGHT)+"*dar)/2)*2, -2 )"
+                C = "if(gt(iw,"+str(MAX_WIDTH)+"), trunc(("+str(MAX_WIDTH)+"/dar)/2)*2 ,-2)"
+                D = "min( trunc(ih/2)*2," + str(MAX_HEIGHT) + ")"
+                scalestr = "scale='if( gt(dar,"+str(max_asp)+"), "+ A +", "+B+")':'if( gt(dar,"+str(max_asp)+"), "+C+", "+D+" )'"
+                  
             cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr))
             cmd.append(outputf)
             subprocess.run(cmd)
