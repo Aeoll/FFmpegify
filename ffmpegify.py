@@ -1,3 +1,5 @@
+#! /usr/bin/python3 -OOt
+
 import pathlib
 import re
 import sys
@@ -54,7 +56,9 @@ def convert(path):
             platform = sys.platform
             if platform == "win32":
                 cmd = ['ffmpeg']
-            else: # need to use full path to ffmpeg for osx and possibly linux?
+            elif platform.startswith('linux'): # full path to ffmpeg for linux
+                cmd = ['/usr/bin/ffmpeg'] 
+            else: # full path to ffmpeg for osx
                 cmd = ['/usr/local/bin/ffmpeg'] 
  
             cmd.extend(('-r', str(FRAME_RATE)))
