@@ -1,0 +1,7 @@
+[Nemo Action]
+Active=true
+Name=FFmpegify
+Comment=FFmpegify
+Exec=<ffmpegify.py %F>
+Selection=S
+Extensions=any;

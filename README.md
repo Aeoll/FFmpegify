@@ -15,12 +15,18 @@ A Context Menu addition for fast conversion of image sequences to videos
 - Run ffmpegify.reg - FFmpegify will appear as a context menu item for all filetypes
 
 # Mac Setup
-- Install Python36 (the default install location is /usr/local/bin/python3)
+- Install Python3 (the default install location is /usr/local/bin/python3)
 - Install FFmpeg. The easiest way to do this is to install Homebrew https://brew.sh/ and then run `brew install ffmpeg` in a terminal
 - Download and extract this repository to your chosen location
 - Open 'Automator' and create a new 'Run Shell Script' automation as shown, with the ffmpegify path set to your chosen location
 ![alt text](https://github.com/Aeoll/FFmpegify/blob/master/osxsetup.png "osxsetup")
 - FFmpegify will appear at the bottom of the Finder context menu for all filetypes
+
+# Linux Setup (Nemo)
+- Install the latest version of FFmpeg
+- To add to the context menu of the Nemo file manager you use of nemo actions, described here https://wiki.archlinux.org/index.php/Nemo#Nemo_Actions
+- Copy ffmpegify.nemo_action to /usr/share/nemo/actions/
+- Copy ffmpegify.py to /usr/share/nemo/actions/ (ensure root has execution rights)
 
 # Tips
 - The frame numbering should be directly before the extension. (e.g MySequence.0034.jpg)
