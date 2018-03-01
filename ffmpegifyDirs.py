@@ -54,7 +54,7 @@ def convert(path):
             # get absolute path to the input file and set the outputfile
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
-            outputf = str(origdir.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
+            outputf = str(origdir.with_name( file.parent.name + "_video." + VIDFORMAT ))
             # if the video already exists create do not overwrite it
             counter = 1
             while pathlib.Path(outputf).exists():
