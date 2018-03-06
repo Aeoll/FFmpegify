@@ -3,6 +3,7 @@
 import pathlib
 import re
 import sys
+import os
 import subprocess
 from pathlib import *
 import json
@@ -17,25 +18,21 @@ def convert(path, config):
     PRESET = config['preset']
     VIDFORMAT = config['format']
 
-    DIR = False # Is the path a directory or a file
-
-    file = pathlib.Path(path)
-
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
     alltypes = standard + gamma
 
-    # Branch for converting directories so there aren't separate python files for files/dirs
-    # TODO....
-    # if os.path.isdir(path):
-    #     DIR = True
-    #     files = os.listdir(path)
-    #     for f in files:
-    #         fpath = pathlib.Path(f)
-    #         if fpath.suffix in alltypes:
-    #             file = file.joinpath(fpath)
-    #             break
-
+    file = pathlib.Path(path)
+    saveDir = file # set the directory to save the output to
+    
+    # For Directories
+    if os.path.isdir(path):
+        files = os.listdir(path)
+        for f in files:
+            fpath = pathlib.Path(f)
+            if fpath.suffix in alltypes:
+                file = file.joinpath(fpath)
+                break
     stem = file.stem
     suffix = file.suffix
 
@@ -61,11 +58,12 @@ def convert(path, config):
             # get absolute path to the input file and set the outputfile
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
-            outputf = str(file.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
+
+            outputf = str(saveDir.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
             # if the video already exists create do not overwrite it
             counter = 1
             while pathlib.Path(outputf).exists():
-                outputf = str(file.with_name( '_' + file.parent.name + "_video_" + str(counter) + "." + VIDFORMAT ))
+                outputf = str(saveDir.with_name( '_' + file.parent.name + "_video_" + str(counter) + "." + VIDFORMAT ))
                 counter = counter + 1
 
             # create ffmpeg command and call it

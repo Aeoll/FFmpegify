@@ -4,6 +4,7 @@ from PyQt5.QtCore import *
 import os
 import sys
 import json
+from pathlib import *
 
 # So much boilerplate...Wow.. Just use Qt Designer...
 
@@ -11,11 +12,12 @@ class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
     formats = ["mov", "mp4"]
 
-    def __init__(self):
+    def __init__(self, ffmpegify_loc):
         super().__init__()
+        self.loc = ffmpegify_loc
         self.initUI()
         
-    def initUI(self):           
+    def initUI(self):    
         self.cf = self.readSettings()
         layout = QFormLayout()
 
@@ -86,7 +88,7 @@ class Example(QDialog):
                 pass
 
     def readSettings(self):    
-        with open('settings.json', 'r') as f:
+        with open(Path(self.loc).with_name('settings.json'), 'r') as f:
             config = json.load(f)
         return config
 
@@ -100,11 +102,12 @@ class Example(QDialog):
         cfg['quality'] = str(self.cf_widget.value())
         cfg['preset'] = self.preset_widget.currentText()
         cfg['format'] = self.format_widget.currentText()
-        with open('settings.json', 'w') as f:
+        with open(Path(self.loc).with_name('settings.json'), 'w') as f:
             json.dump(cfg, f)
         self.accept()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = Example()
+    ffmpegify_loc = sys.argv[0]
+    ex = Example(ffmpegify_loc)
     sys.exit(app.exec_())
