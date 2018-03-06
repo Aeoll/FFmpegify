@@ -8,6 +8,7 @@ import subprocess
 # Editable Settings
 # =========================
 FRAME_RATE = 25    # Frames per second
+MAX_FRAMES = 0     # Maximum frames to render. Set to 0 to render all
 MAX_WIDTH = 1920   # Set to -1 for no maximum width. Max should be divisible by 2
 MAX_HEIGHT = 1080  # Set to -1 for no maximum height. Max should be divisible by 2
 CRF = 18           # Quality (bitrate) setting from 1->50. Lower is higher quality 
@@ -74,6 +75,8 @@ def convert(path):
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
             cmd.extend(('-c:v', 'libx264'))
+            if MAX_FRAMES:
+                cmd.extend(('-vframes', str(MAX_FRAMES)))
             cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
             if MAX_HEIGHT < 0 and MAX_WIDTH < 0:

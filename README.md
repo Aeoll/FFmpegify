@@ -1,6 +1,6 @@
 # FFmpegify
 
-![alt text](https://github.com/Aeoll/FFmpegify/blob/master/example.gif "ffmpegify")
+![alt text](https://github.com/Aeoll/FFmpegify/blob/master/img/example.gif "ffmpegify")
 
 A Context Menu addition for fast conversion of image sequences to videos
 - Supports JPG, PNG, TIFF, TGA and EXR sequences (single-layer EXRs only)
@@ -19,7 +19,7 @@ A Context Menu addition for fast conversion of image sequences to videos
 - Install FFmpeg. The easiest way to do this is to install Homebrew https://brew.sh/ and then run `brew install ffmpeg` in a terminal
 - Download and extract this repository to your chosen location
 - Open 'Automator' and create a new 'Run Shell Script' automation as shown, with the ffmpegify path set to your chosen location
-![alt text](https://github.com/Aeoll/FFmpegify/blob/master/osxsetup.png "osxsetup")
+![alt text](https://github.com/Aeoll/FFmpegify/blob/master/img/osxsetup.png "osxsetup")
 - FFmpegify will appear at the bottom of the Finder context menu for all filetypes
 
 # Linux Setup (Nemo)
@@ -32,4 +32,3 @@ A Context Menu addition for fast conversion of image sequences to videos
 - The frame numbering should be directly before the extension. (e.g MySequence.0034.jpg)
 - The script works for any frame number selected - you do not need to select the fist frame in the sequence.
 - The default max output size is set to 1920 x 1080. This can be changed by editing the settings at the top of ffmepgify.py
-- 2 other python files are included which demonstrate alternate settings for output format, conversion speed and bitrate. These settings are defined at the top of the file

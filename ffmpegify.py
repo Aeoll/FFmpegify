@@ -4,24 +4,40 @@ import pathlib
 import re
 import sys
 import subprocess
+from pathlib import *
+import json
 
-# =========================
-# Editable Settings
-# =========================
-FRAME_RATE = 25    # Frames per second
-MAX_WIDTH = 1920   # Set to -1 for no maximum width. Max should be divisible by 2
-MAX_HEIGHT = 1080  # Set to -1 for no maximum height. Max should be divisible by 2
-CRF = 18           # Quality (bitrate) setting from 1->50. Lower is higher quality 
-PRESET = "faster"  # slow, medium, ultrafast etc
-VIDFORMAT = "mov"  # output format
+def convert(path, config):
+    # get config settings
+    MAX_FRAMES = int(config['maxFrames'])
+    MAX_WIDTH = int(config['maxWidth'])
+    MAX_HEIGHT = int(config['maxHeight'])
+    CRF = int(config['quality'])
+    FRAME_RATE = int(config['FPS'])
+    PRESET = config['preset']
+    VIDFORMAT = config['format']
 
-def convert(path):
+    DIR = False # Is the path a directory or a file
+
     file = pathlib.Path(path)
-    stem = file.stem
-    suffix = file.suffix
+
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
     alltypes = standard + gamma
+
+    # Branch for converting directories so there aren't separate python files for files/dirs
+    # TODO....
+    # if os.path.isdir(path):
+    #     DIR = True
+    #     files = os.listdir(path)
+    #     for f in files:
+    #         fpath = pathlib.Path(f)
+    #         if fpath.suffix in alltypes:
+    #             file = file.joinpath(fpath)
+    #             break
+
+    stem = file.stem
+    suffix = file.suffix
 
     if( suffix in alltypes ):
         l = len(stem)
@@ -67,14 +83,16 @@ def convert(path):
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
             cmd.extend(('-c:v', 'libx264'))
+            if MAX_FRAMES > 0:
+                cmd.extend(('-vframes', str(MAX_FRAMES)))            
             cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
-            if MAX_HEIGHT < 0 and MAX_WIDTH < 0:
+            if MAX_HEIGHT <= 0 and MAX_WIDTH <= 0:
                 scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
-            elif MAX_WIDTH < 0:
-                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
-            elif MAX_HEIGHT < 0:
+            elif MAX_WIDTH <= 0:
                 scalestr = "scale='-2:min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+            elif MAX_HEIGHT <= 0:
+                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
             else:
                 # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
                 scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad="+ str(MAX_WIDTH) +":"+ str(MAX_HEIGHT) +":(ow-iw)/2:(oh-ih)/2"
@@ -94,5 +112,16 @@ def convert(path):
     else:
         print("Invalid file extension")
 
+# Read config file for settings
+def readSettings(settings):    
+    try:
+        with open(settings, 'r') as f:
+            config = json.load(f)
+    except Exception as e: print(e)
+    f.close()
+    return config
+
 if __name__ == '__main__':
-    convert(sys.argv[1])
+    path = Path(sys.argv[0]).with_name('settings.json')
+    config = readSettings(path)
+    convert(sys.argv[1], config)
