@@ -10,6 +10,7 @@ import json
 
 def convert(path, config):
     # get config settings
+    START_FRAME = int(config['startFrame'])
     MAX_FRAMES = int(config['maxFrames'])
     MAX_WIDTH = int(config['maxWidth'])
     MAX_HEIGHT = int(config['maxHeight'])
@@ -54,6 +55,8 @@ def convert(path, config):
             postframepart = stem[sp2[1]:]
             frames = sorted(file.parent.glob(preframepart + '*' + postframepart))
             start_num = int(frames[0].name[sp2[0]:sp2[1]])
+            if START_FRAME > 0:
+                start_num = START_FRAME
 
             # get absolute path to the input file and set the outputfile
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix

@@ -47,13 +47,21 @@ class Example(QDialog):
         self.maxh_widget.setValue(int(self.cf['maxHeight']))    
         layout.addRow(self.maxh_label, self.maxh_widget)
 
+        # START FRAME
+        self.startframe_label = QLabel("Start Frame (0 for first in sequence)")
+        self.startframe_widget = QSpinBox()
+        self.startframe_widget.setRange(0, 5000)    
+        self.startframe_widget.setValue(int(self.cf['startFrame']))    
+        layout.addRow(self.startframe_label, self.startframe_widget)
+
         # END FRAME (LEN)
-        self.endframe_label = QLabel("Frame limit (0 to disable)")
+        self.endframe_label = QLabel("Max Frames (0 for no maximum)")
         self.endframe_widget = QSpinBox()
         self.endframe_widget.setRange(0, 5000)    
         self.endframe_widget.setValue(int(self.cf['maxFrames']))    
         layout.addRow(self.endframe_label, self.endframe_widget)
         
+
         # PRESET
         self.preset_label = QLabel("Preset")
         self.preset_widget = QComboBox()
@@ -96,6 +104,7 @@ class Example(QDialog):
     def writeSettings(self):
         cfg = {}
         cfg['FPS'] = str(self.fps_widget.value())
+        cfg['startFrame'] = str(self.startframe_widget.value())
         cfg['maxFrames'] = str(self.endframe_widget.value())
         cfg['maxWidth'] = str(self.maxw_widget.value())
         cfg['maxHeight'] = str(self.maxh_widget.value())
