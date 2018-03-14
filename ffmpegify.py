@@ -23,6 +23,12 @@ def convert(path, config):
     gamma = ['.exr', '.tga']
     alltypes = standard + gamma
 
+    # Check if being output to video or frames
+    isVidOut = True
+    vids = ['mov', 'mp4']
+    if VIDFORMAT not in vids:
+        isVidOut = False
+
     file = pathlib.Path(path)
     saveDir = file # set the directory to save the output to
     
@@ -63,6 +69,9 @@ def convert(path, config):
             inputf_abs = str(file.with_name(inputf))
 
             outputf = str(saveDir.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
+            if not isVidOut:
+                outputf = str(saveDir.with_name( '_' + preframepart + "_" + padstring + "." + VIDFORMAT ))
+
             # if the video already exists create do not overwrite it
             counter = 1
             while pathlib.Path(outputf).exists():
@@ -83,10 +92,11 @@ def convert(path, config):
                 cmd.extend(('-gamma', '2.2'))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
-            cmd.extend(('-c:v', 'libx264'))
+            if isVidOut:
+                cmd.extend(('-c:v', 'libx264'))
+                cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
             if MAX_FRAMES > 0:
-                cmd.extend(('-vframes', str(MAX_FRAMES)))            
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+                cmd.extend(('-vframes', str(MAX_FRAMES)))    
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
             if MAX_HEIGHT <= 0 and MAX_WIDTH <= 0:
                 scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
@@ -104,8 +114,11 @@ def convert(path, config):
                 C = "if(gt(iw,"+str(MAX_WIDTH)+"), trunc(("+str(MAX_WIDTH)+"/dar)/2)*2 ,-2)"
                 D = "min( trunc(ih/2)*2," + str(MAX_HEIGHT) + ")"
                 scalestr = "scale='if( gt(dar,"+str(max_asp)+"), "+ A +", "+B+")':'if( gt(dar,"+str(max_asp)+"), "+C+", "+D+" )'"
-                  
-            cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr))
+            if isVidOut:            
+                cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr))
+                cmd.extend(('-sws_flags', 'lanczos'))
+            else:
+                cmd.extend(('-vf', scalestr))
             cmd.append(outputf)
             subprocess.run(cmd)
         else:
@@ -126,3 +139,4 @@ if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
     config = readSettings(path)
     convert(sys.argv[1], config)
+    # input()

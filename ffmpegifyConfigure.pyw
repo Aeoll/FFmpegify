@@ -10,7 +10,7 @@ from pathlib import *
 
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
-    formats = ["mov", "mp4"]
+    formats = ["mov", "mp4", "png", "tiff"]
 
     def __init__(self, ffmpegify_loc):
         super().__init__()
