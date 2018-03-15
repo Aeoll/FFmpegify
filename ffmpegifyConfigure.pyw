@@ -11,6 +11,7 @@ from pathlib import *
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
     formats = ["mov", "mp4", "png", "tiff"]
+    scalers = ["bicubic", "bilinear", "lanczos", "neighbor"]
 
     def __init__(self, ffmpegify_loc):
         super().__init__()
@@ -19,8 +20,11 @@ class Example(QDialog):
         
     def initUI(self):    
         self.cf = self.readSettings()
-        layout = QFormLayout()
 
+        # main top level layout
+        mainlayout = QVBoxLayout()
+
+        layout = QFormLayout()
         # FRAMERATE
         self.fps_label = QLabel("Frame Rate")
         self.fps_widget = QSpinBox()
@@ -47,6 +51,14 @@ class Example(QDialog):
         self.maxh_widget.setValue(int(self.cf['maxHeight']))    
         layout.addRow(self.maxh_label, self.maxh_widget)
 
+        # SCALER
+        self.scaler_label = QLabel("Scaling Algorithm")
+        self.scaler_widget = QComboBox()
+        for p in self.scalers:
+            self.scaler_widget.addItem(p)        
+        self.scaler_widget.setCurrentText(self.cf['scaler'])            
+        layout.addRow(self.scaler_label, self.scaler_widget)
+
         # START FRAME
         self.startframe_label = QLabel("Start Frame (0 for first in sequence)")
         self.startframe_widget = QSpinBox()
@@ -61,7 +73,6 @@ class Example(QDialog):
         self.endframe_widget.setValue(int(self.cf['maxFrames']))    
         layout.addRow(self.endframe_label, self.endframe_widget)
         
-
         # PRESET
         self.preset_label = QLabel("Preset")
         self.preset_widget = QComboBox()
@@ -77,15 +88,23 @@ class Example(QDialog):
             self.format_widget.addItem(p)        
         self.format_widget.setCurrentText(self.cf['format'])            
         layout.addRow(self.format_label, self.format_widget)
+        
+        # Add form to main layout
+        mainlayout.addLayout(layout)  
+        
+        # Spacer after form
+        line = QFrame()
+        line.setMinimumSize(0, 10)             
+        mainlayout.addWidget(line)     
 
         # ButtonBox
         self.bbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)    
         self.bbox.setCenterButtons(True)  
         self.bbox.accepted.connect(self.writeSettings)
         self.bbox.rejected.connect(self.reject)
-        layout.addWidget(self.bbox)        
+        mainlayout.addWidget(self.bbox)      
 
-        self.setLayout(layout)  
+        self.setLayout(mainlayout)  
         self.setGeometry(300, 300, 250, 150)
         self.setWindowTitle('FFmpegify Settings')    
         self.show()        
@@ -108,6 +127,7 @@ class Example(QDialog):
         cfg['maxFrames'] = str(self.endframe_widget.value())
         cfg['maxWidth'] = str(self.maxw_widget.value())
         cfg['maxHeight'] = str(self.maxh_widget.value())
+        cfg['scaler'] = self.scaler_widget.currentText()
         cfg['quality'] = str(self.cf_widget.value())
         cfg['preset'] = self.preset_widget.currentText()
         cfg['format'] = self.format_widget.currentText()

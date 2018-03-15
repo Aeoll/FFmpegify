@@ -14,6 +14,7 @@ def convert(path, config):
     MAX_FRAMES = int(config['maxFrames'])
     MAX_WIDTH = int(config['maxWidth'])
     MAX_HEIGHT = int(config['maxHeight'])
+    SCALER = config['scaler']
     CRF = int(config['quality'])
     FRAME_RATE = int(config['FPS'])
     PRESET = config['preset']
@@ -116,9 +117,9 @@ def convert(path, config):
                 scalestr = "scale='if( gt(dar,"+str(max_asp)+"), "+ A +", "+B+")':'if( gt(dar,"+str(max_asp)+"), "+C+", "+D+" )'"
             if isVidOut:            
                 cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr))
-                cmd.extend(('-sws_flags', 'lanczos'))
             else:
                 cmd.extend(('-vf', scalestr))
+            cmd.extend(('-sws_flags', SCALER))
             cmd.append(outputf)
             subprocess.run(cmd)
         else:
