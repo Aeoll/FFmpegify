@@ -17,7 +17,7 @@ class Example(QDialog):
         super().__init__()
         self.loc = ffmpegify_loc
         self.initUI()
-        
+
     def initUI(self):    
         self.cf = self.readSettings()
 
@@ -109,6 +109,13 @@ class Example(QDialog):
         self.setWindowTitle('FFmpegify Settings')    
         self.show()        
 
+    # Open it under the cursor
+    def showEvent(self, event):
+        geom = self.frameGeometry()
+        geom.moveCenter(QCursor.pos())
+        self.setGeometry(geom)
+        super(Example, self).showEvent(event)    
+
     # Prevent hitting Enter from pressing OK button
     def keyPressEvent(self, event):
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
@@ -139,4 +146,5 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ffmpegify_loc = sys.argv[0]
     ex = Example(ffmpegify_loc)
+    ex.show()
     sys.exit(app.exec_())
