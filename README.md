@@ -3,15 +3,18 @@
 ![alt text](https://github.com/Aeoll/FFmpegify/blob/master/img/example.gif "ffmpegify")
 
 A Context Menu addition for fast conversion of image sequences to videos
-- Supports JPG, PNG, TIFF, TGA and EXR sequences (single-layer EXRs only)
+- Supports JPG, PNG, TIFF, TGA and EXR sequences
 - Supports arbitrary starting frame numbers and frame number padding
+- Can output MOV, MP4, PNG Sequence and TIFF Sequence
 - Supports maximum output width and height settings (maintains aspect ratio)   
-- Applies a premultiply filter for better conversion of transparent images  
+- Applies a premultiply filter for better conversion of transparent images and gamma correct linear sequences (EXR, TGA)
+- The settings can be adjusted in an 'ffmpegifySettings' dialog accessed by right clicking an empty area in Windows Explorer 
 
 # Windows Setup
-- Install Python36 to C:/Python36 (Or other location and edit ffmpegify.reg)
+- Install Python36 to C:/Python36
 - Install FFmpeg and ensure it is available to the command line (i.e added to the PATH environment variable)
-- Download and extract this repository to C:/FFmpegify (Or other location and edit ffmpegify.reg)
+- Install PyQt5 (needed for the settings menu) by running 'pip install PyQt5' from the command line
+- Download and extract this repository to C:/FFmpegify
 - Run ffmpegify.reg - FFmpegify will appear as a context menu item for all filetypes
 
 # Mac Setup
@@ -31,4 +34,3 @@ A Context Menu addition for fast conversion of image sequences to videos
 # Tips
 - The frame numbering should be directly before the extension. (e.g MySequence.0034.jpg)
 - The script works for any frame number selected - you do not need to select the fist frame in the sequence.
-- The default max output size is set to 1920 x 1080. This can be changed by editing the settings at the top of ffmepgify.py
