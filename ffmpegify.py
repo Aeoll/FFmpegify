@@ -18,6 +18,7 @@ def convert(path, config):
     CRF = int(config['quality'])
     FRAME_RATE = int(config['FPS'])
     PRESET = config['preset']
+    CODEC = config['codec']
     VIDFORMAT = config['format']
 
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
@@ -88,14 +89,22 @@ def convert(path, config):
             else: # full path to ffmpeg for osx
                 cmd = ['/usr/local/bin/ffmpeg'] 
  
-            cmd.extend(('-r', str(FRAME_RATE)))
-            if(suffix in gamma):
-                cmd.extend(('-gamma', '2.2'))
-            cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             cmd.extend(('-i', inputf_abs))
             if isVidOut:
-                cmd.extend(('-c:v', 'libx264'))
-                cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+                # Codecs TODO DNxHR and ProRes
+                if CODEC == "H.264":
+                    cmd.extend(('-c:v', 'libx264'))
+                    cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+                elif CODEC == "DNxHR":
+                    cmd.extend(('-c:v', 'dnxhd'))
+                    cmd.extend(('-profile', 'dnxhr_hq'))
+                else:
+                    pass
+
+            if(suffix in gamma):
+                cmd.extend(('-gamma', '2.2'))
+            cmd.extend(('-r', str(FRAME_RATE)))
+            cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             if MAX_FRAMES > 0:
                 cmd.extend(('-vframes', str(MAX_FRAMES)))    
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
@@ -140,4 +149,4 @@ if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
     config = readSettings(path)
     convert(sys.argv[1], config)
-    # input()
+    #input()

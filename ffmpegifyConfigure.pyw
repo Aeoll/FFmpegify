@@ -11,6 +11,7 @@ from pathlib import *
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
     formats = ["mov", "mp4", "png", "tiff"]
+    codecs = ["H.264", "DNxHR"]
     scalers = ["bicubic", "bilinear", "lanczos", "neighbor"]
 
     def __init__(self, ffmpegify_loc):
@@ -81,6 +82,14 @@ class Example(QDialog):
         self.preset_widget.setCurrentText(self.cf['preset'])
         layout.addRow(self.preset_label, self.preset_widget)
         
+        # CODEC
+        self.codec_label = QLabel("Codec")
+        self.codec_widget = QComboBox()
+        for p in self.codecs:
+            self.codec_widget.addItem(p)   
+        self.codec_widget.setCurrentText(self.cf['codec'])
+        layout.addRow(self.codec_label, self.codec_widget)
+
         # FORMAT
         self.format_label = QLabel("Format")
         self.format_widget = QComboBox()
@@ -137,6 +146,7 @@ class Example(QDialog):
         cfg['scaler'] = self.scaler_widget.currentText()
         cfg['quality'] = str(self.cf_widget.value())
         cfg['preset'] = self.preset_widget.currentText()
+        cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()
         with open(Path(self.loc).with_name('settings.json'), 'w') as f:
             json.dump(cfg, f)
