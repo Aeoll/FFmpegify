@@ -54,17 +54,21 @@ def convert(path, config):
             sp = m.span(0)
             sp2 = [l-a for a in sp]
             sp2.reverse()
-            # get zfill for frame num
-            padding = sp2[1] - sp2[0]
-            padstring = '%' + format(padding, '02') + 'd' # eg %05d
 
             # glob for other frames in the folder and find the first frame to use as start number
             preframepart = stem[0:sp2[0]]
             postframepart = stem[sp2[1]:]
-            frames = sorted(file.parent.glob(preframepart + '*' + postframepart))
+            frames = sorted(file.parent.glob(preframepart + '*' + postframepart + suffix))
             start_num = int(frames[0].name[sp2[0]:sp2[1]])
             if START_FRAME > 0:
                 start_num = START_FRAME
+
+            # get padding for frame num
+            padding = sp2[1] - sp2[0]
+            padstring = '%' + format(padding, '02') + 'd' # eg %05d
+            # fix for unpadded frame numbers
+            if len(frames[0].name) != len(frames[-1].name): 
+                padstring  = '%' + 'd'    
 
             # get absolute path to the input file and set the outputfile
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
