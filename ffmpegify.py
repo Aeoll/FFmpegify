@@ -92,7 +92,10 @@ def convert(path, config):
                 cmd = ['/usr/bin/ffmpeg'] 
             else: # full path to ffmpeg for osx
                 cmd = ['/usr/local/bin/ffmpeg'] 
- 
+
+            if(suffix in gamma):
+                cmd.extend(('-gamma', '2.2'))
+
             cmd.extend(('-i', inputf_abs))
             if isVidOut:
                 # Codecs TODO DNxHR and ProRes
@@ -105,8 +108,6 @@ def convert(path, config):
                 else:
                     pass
 
-            if(suffix in gamma):
-                cmd.extend(('-gamma', '2.2'))
             cmd.extend(('-r', str(FRAME_RATE)))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
             if MAX_FRAMES > 0:
@@ -153,4 +154,4 @@ if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
     config = readSettings(path)
     convert(sys.argv[1], config)
-    #input()
+    # input()
