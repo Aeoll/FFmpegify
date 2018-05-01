@@ -20,6 +20,7 @@ def convert(path, config):
     PRESET = config['preset']
     CODEC = config['codec']
     VIDFORMAT = config['format']
+    GAMMA = config['gamma']
 
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
@@ -94,7 +95,7 @@ def convert(path, config):
                 cmd = ['/usr/local/bin/ffmpeg'] 
 
             if(suffix in gamma):
-                cmd.extend(('-gamma', '2.2'))
+                cmd.extend(('-gamma', GAMMA))
 
             cmd.extend(('-i', inputf_abs))
             if isVidOut:

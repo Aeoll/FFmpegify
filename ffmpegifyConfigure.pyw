@@ -73,6 +73,12 @@ class Example(QDialog):
         self.endframe_widget.setRange(0, 5000)    
         self.endframe_widget.setValue(int(self.cf['maxFrames']))    
         layout.addRow(self.endframe_label, self.endframe_widget)
+
+        # GAMMA
+        self.gamma_label = QLabel("Gamma (EXR/TGA only)")
+        self.gamma_widget = QDoubleSpinBox()
+        self.gamma_widget.setValue(float(self.cf['gamma']))    
+        layout.addRow(self.gamma_label, self.gamma_widget)
         
         # PRESET
         self.preset_label = QLabel("Preset")
@@ -145,6 +151,7 @@ class Example(QDialog):
         cfg['maxHeight'] = str(self.maxh_widget.value())
         cfg['scaler'] = self.scaler_widget.currentText()
         cfg['quality'] = str(self.cf_widget.value())
+        cfg['gamma'] = str(self.gamma_widget.value())
         cfg['preset'] = self.preset_widget.currentText()
         cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()

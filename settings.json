@@ -1,1 +1,1 @@
-{"FPS": "25", "startFrame": "0", "maxFrames": "0", "maxWidth": "0", "maxHeight": "0", "scaler": "lanczos", "quality": "18", "preset": "medium", "codec": "H.264", "format": "mov"}
+{"FPS": "25", "startFrame": "0", "maxFrames": "0", "maxWidth": "1280", "maxHeight": "0", "scaler": "lanczos", "quality": "20", "gamma": "1.0", "preset": "medium", "codec": "H.264", "format": "mov"}
