@@ -33,13 +33,13 @@ class Example(QDialog):
         layout.addRow(self.fps_label, self.fps_widget)
 
         # QUALITY
-        self.cf_label = QLabel("Quality Factor (0-51)")
+        self.cf_label = QLabel("Quality (0-51: Lower=Better Quality)")
         self.cf_widget = QSpinBox()
         self.cf_widget.setValue(int(self.cf['quality']))    
         layout.addRow(self.cf_label, self.cf_widget)
 
         # MAXWIDTH
-        self.maxw_label = QLabel("Minimum Width (0 to disable)")
+        self.maxw_label = QLabel("Maximum Width (0 to disable)")
         self.maxw_widget = QSpinBox()
         self.maxw_widget.setRange(0, 5000)    
         self.maxw_widget.setValue(int(self.cf['maxWidth']))    
