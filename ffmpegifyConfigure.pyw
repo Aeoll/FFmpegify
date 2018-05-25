@@ -103,6 +103,13 @@ class Example(QDialog):
             self.format_widget.addItem(p)        
         self.format_widget.setCurrentText(self.cf['format'])            
         layout.addRow(self.format_label, self.format_widget)
+
+        # NAMING LEVELS
+        self.namelevels_label = QLabel("Naming Levels (0 for full path)")
+        self.namelevels_widget = QSpinBox()
+        self.namelevels_widget.setRange(0, 10)    
+        self.namelevels_widget.setValue(int(self.cf['namelevels']))    
+        layout.addRow(self.namelevels_label, self.namelevels_widget)
         
         # Add form to main layout
         mainlayout.addLayout(layout)  
@@ -155,6 +162,7 @@ class Example(QDialog):
         cfg['preset'] = self.preset_widget.currentText()
         cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()
+        cfg['namelevels'] = str(self.namelevels_widget.value())
         with open(Path(self.loc).with_name('settings.json'), 'w') as f:
             json.dump(cfg, f)
         self.accept()

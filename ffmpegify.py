@@ -21,6 +21,7 @@ def convert(path, config):
     CODEC = config['codec']
     VIDFORMAT = config['format']
     GAMMA = config['gamma']
+    NAME_LEVELS = int(config['namelevels'])
 
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
@@ -75,14 +76,24 @@ def convert(path, config):
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
 
-            outputf = str(saveDir.with_name( '_' + file.parent.name + "_video." + VIDFORMAT ))
+            # naming the video file based on parent dirs
+            parts = file.parent.parts
+            if(NAME_LEVELS > 0):
+                sec = len(parts)-NAME_LEVELS
+                parts = parts[sec:]
+                outname = "_".join(parts)
+            else:
+                outname = str(file.parent)
+            outname = re.sub(r'\W+', '_', outname)                
+
+            outputf = str(saveDir.with_name( '_' + outname + "_video." + VIDFORMAT ))
             if not isVidOut:
                 outputf = str(saveDir.with_name( '_' + preframepart + "_" + padstring + "." + VIDFORMAT ))
 
             # if the video already exists create do not overwrite it
             counter = 1
             while pathlib.Path(outputf).exists():
-                outputf = str(saveDir.with_name( '_' + file.parent.name + "_video_" + str(counter) + "." + VIDFORMAT ))
+                outputf = str(saveDir.with_name( '_' + outname + "_video_" + str(counter) + "." + VIDFORMAT ))
                 counter = counter + 1
 
             # create ffmpeg command and call it
