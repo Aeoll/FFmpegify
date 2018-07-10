@@ -108,6 +108,7 @@ def convert(path, config):
             if(suffix in gamma):
                 cmd.extend(('-gamma', GAMMA))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
+            cmd.extend(('-r', str(FRAME_RATE)))
 
             cmd.extend(('-i', inputf_abs))
             if isVidOut:
@@ -121,7 +122,6 @@ def convert(path, config):
                 else:
                     pass
 
-            cmd.extend(('-r', str(FRAME_RATE)))
             if MAX_FRAMES > 0:
                 cmd.extend(('-vframes', str(MAX_FRAMES)))    
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
