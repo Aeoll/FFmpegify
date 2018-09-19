@@ -146,6 +146,8 @@ def convert(path, config):
             else:
                 cmd.extend(('-vf', scalestr))
             cmd.extend(('-sws_flags', SCALER))
+            if VIDFORMAT == 'jpg':
+                cmd.extend(('-q:v', '2'))               
             cmd.append(outputf)
             subprocess.run(cmd)
         else:
