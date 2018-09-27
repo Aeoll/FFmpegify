@@ -11,11 +11,12 @@ A Context Menu addition for fast conversion of image sequences to videos
 - The settings can be adjusted in an 'ffmpegifySettings' dialog accessed by right clicking an empty area in Windows Explorer 
 
 # Windows Setup
-- Install Python36 to C:/Python36
+- Install Python37 to C:/Python36
 - Install FFmpeg and ensure it is available to the command line (i.e added to the PATH environment variable)
 - Install PyQt5 (needed for the settings menu) by running 'pip install PyQt5' from the command line
 - Download and extract this repository to C:/FFmpegify
-- Run ffmpegify.reg - FFmpegify will appear as a context menu item for all filetypes
+- Run ffmpegify.reg - FFmpegify will appear as a context menu item for all 
+- If this doesn't work, open ffmpegify.reg in a text editor and check all the paths align with your system
 
 # Mac Setup
 - Install Python3 (the default install location is /usr/local/bin/python3)
