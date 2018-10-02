@@ -24,7 +24,9 @@ def convert(path, config):
     VIDFORMAT = config['format']
     GAMMA = config['gamma']
     NAME_LEVELS = int(config['namelevels'])
+    
     AUDIO = False
+    AUDIO_OFFSET = int(config['audiooffset'])
 
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
@@ -122,7 +124,7 @@ def convert(path, config):
                 if( tracks ):
                     AUDIO = True
                     # audio track offset - add controls for this
-                    # cmd.extend(('-itsoffset', '-30'))
+                    cmd.extend(('-itsoffset', str(AUDIO_OFFSET)))
                     cmd.extend(('-i', str(tracks[0])))
             except:
                 pass

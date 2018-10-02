@@ -6,8 +6,7 @@ import sys
 import json
 from pathlib import *
 
-# So much boilerplate...Wow.. Just use Qt Designer...
-
+# So much boilerplate...Wow.. Just use Qt Designer...?
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
     formats = ["mov", "mp4", "png", "tiff", "jpg"]
@@ -111,6 +110,13 @@ class Example(QDialog):
         self.namelevels_widget.setValue(int(self.cf['namelevels']))    
         layout.addRow(self.namelevels_label, self.namelevels_widget)
         
+        # AUDIO OFFSET
+        self.audiooffset_label = QLabel("Audio Offset (Seconds)")
+        self.audiooffset_widget = QSpinBox()
+        self.audiooffset_widget.setRange(-200, 200)    
+        self.audiooffset_widget.setValue(int(self.cf['audiooffset']))    
+        layout.addRow(self.audiooffset_label, self.audiooffset_widget)
+        
         # Add form to main layout
         mainlayout.addLayout(layout)  
         
@@ -163,6 +169,7 @@ class Example(QDialog):
         cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()
         cfg['namelevels'] = str(self.namelevels_widget.value())
+        cfg['audiooffset'] = str(self.audiooffset_widget.value())
         with open(Path(self.loc).with_name('settings.json'), 'w') as f:
             json.dump(cfg, f)
         self.accept()
