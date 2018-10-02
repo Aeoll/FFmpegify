@@ -4,16 +4,16 @@ Windows Registry Editor Version 5.00
 @="FFmpegify"
 
 [HKEY_CLASSES_ROOT\*\shell\ffmpegify\command]
-@="\"C:\\Python36\\python.exe\" \"C:\\FFmpegify\\ffmpegify.py\" \"%1\""
+@="\"C:\\Python37\\python.exe\" \"C:\\FFmpegify\\ffmpegify.py\" \"%1\""
 
 [HKEY_CLASSES_ROOT\Directory\shell\ffmpegify]
 @="FFmpegify"
 
 [HKEY_CLASSES_ROOT\Directory\shell\ffmpegify\command]
-@="\"C:\\Python36\\python.exe\" \"C:\\FFmpegify\\ffmpegify.py\" \"%1\""
+@="\"C:\\Python37\\python.exe\" \"C:\\FFmpegify\\ffmpegify.py\" \"%1\""
 
 [HKEY_CLASSES_ROOT\Directory\background\shell\ffmpegifySettings]
 @="FFmpegifySettings"
 
 [HKEY_CLASSES_ROOT\Directory\background\shell\ffmpegifySettings\command]
-@="\"C:\\Python36\\pythonw.exe\" \"C:\\FFmpegify\\ffmpegifyConfigure.pyw\""
+@="\"C:\\Python37\\pythonw.exe\" \"C:\\FFmpegify\\ffmpegifyConfigure.pyw\""
