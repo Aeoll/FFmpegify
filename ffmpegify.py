@@ -3,9 +3,11 @@
 import pathlib
 import re
 import sys
+import glob
 import os
 import subprocess
 from pathlib import *
+import time
 import json
 
 def convert(path, config):
@@ -22,6 +24,7 @@ def convert(path, config):
     VIDFORMAT = config['format']
     GAMMA = config['gamma']
     NAME_LEVELS = int(config['namelevels'])
+    AUDIO = False
 
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
@@ -108,8 +111,21 @@ def convert(path, config):
             if(suffix in gamma):
                 cmd.extend(('-gamma', GAMMA))
             cmd.extend(('-start_number', str(start_num).zfill(padding) ))
-
+            cmd.extend(('-r', str(FRAME_RATE)))
             cmd.extend(('-i', inputf_abs))
+
+            # AUDIO
+            try:
+                tracks = []
+                tracks.extend(sorted(file.parent.glob('*.mp3')))
+                tracks.extend(sorted(file.parent.glob('*.wav')))
+                if( tracks ):
+                    AUDIO = True
+                    # audio track offset - add controls for this
+                    # cmd.extend(('-itsoffset', '-30'))
+                    cmd.extend(('-i', str(tracks[0])))
+            except:
+                pass
             if isVidOut:
                 # Codecs TODO DNxHR and ProRes
                 if CODEC == "H.264":
@@ -119,9 +135,8 @@ def convert(path, config):
                     cmd.extend(('-c:v', 'dnxhd'))
                     cmd.extend(('-profile', 'dnxhr_hq'))
                 else:
-                    pass
+                    pass             
 
-            cmd.extend(('-r', str(FRAME_RATE)))
             if MAX_FRAMES > 0:
                 cmd.extend(('-vframes', str(MAX_FRAMES)))    
             # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
@@ -146,8 +161,15 @@ def convert(path, config):
             else:
                 cmd.extend(('-vf', scalestr))
             cmd.extend(('-sws_flags', SCALER))
+            if VIDFORMAT == 'jpg':
+                cmd.extend(('-q:v', '2'))
+            # AUDIO OPTIONS       
+            if AUDIO:
+                cmd.extend(('-c:a', 'aac'))
+                cmd.append('-shortest')
             cmd.append(outputf)
             subprocess.run(cmd)
+            # time.sleep(3000) # for debugging
         else:
             pass 
     else:

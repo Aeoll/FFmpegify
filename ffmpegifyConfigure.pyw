@@ -10,7 +10,7 @@ from pathlib import *
 
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
-    formats = ["mov", "mp4", "png", "tiff"]
+    formats = ["mov", "mp4", "png", "tiff", "jpg"]
     codecs = ["H.264", "DNxHR"]
     scalers = ["bicubic", "bilinear", "lanczos", "neighbor"]
 
