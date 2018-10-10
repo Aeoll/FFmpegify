@@ -121,6 +121,9 @@ def convert(path, config):
                 tracks = []
                 tracks.extend(sorted(file.parent.glob('*.mp3')))
                 tracks.extend(sorted(file.parent.glob('*.wav')))
+                # also search immediate parent?
+                tracks.extend(sorted(file.parents[1].glob('*.mp3')))
+                tracks.extend(sorted(file.parents[1].glob('*.wav')))
                 if( tracks ):
                     AUDIO = True
                     # audio track offset - add controls for this
