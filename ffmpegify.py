@@ -135,7 +135,14 @@ def convert(path, config):
                 # Codecs TODO DNxHR and ProRes
                 if CODEC == "H.264":
                     cmd.extend(('-c:v', 'libx264'))
+                    # colours are always off... not sure how to fix. libx264rgb seems to help but still not right?
+                    # cmd.extend(('-c:v', 'libx264rgb'))
+                    # cmd.extend(('--colormatrix', 'bt709'))
+                    # cmd.extend(('-x264opts', 'colormatrix=bt709'))
+
                     cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+                    # cmd.extend(('-pix_fmt', 'yuv444p', '-crf', str(CRF), '-preset', PRESET))
+                    # cmd.extend(('-crf', str(CRF), '-preset', PRESET))
                 elif CODEC == "DNxHR":
                     cmd.extend(('-c:v', 'dnxhd'))
                     cmd.extend(('-profile', 'dnxhr_hq'))
