@@ -198,6 +198,7 @@ def convert(path, config):
             # AUDIO OPTIONS
             if AUDIO:
                 cmd.extend(('-c:a', 'aac'))
+                cmd.extend(('-b:a', '320k'))
                 cmd.append('-shortest')
             cmd.append(outputf)
             subprocess.run(cmd)
