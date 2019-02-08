@@ -1,1 +1,1 @@
-{"FPS": "30", "startFrame": "0", "maxFrames": "0", "maxWidth": "0", "maxHeight": "0", "scaler": "lanczos", "quality": "18", "gamma": "2.2", "preset": "fast", "codec": "H.264", "format": "mp4", "namelevels": "3", "audiooffset": "0"}
+{"FPS": "30", "startFrame": "0", "maxFrames": "0", "maxWidth": "0", "maxHeight": "0", "scaler": "lanczos", "quality": "18", "gamma": "2.2", "premult": "0", "preset": "fast", "codec": "H.264", "format": "mp4", "namelevels": "3", "audiooffset": "0"}

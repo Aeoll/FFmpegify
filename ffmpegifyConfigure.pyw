@@ -79,6 +79,13 @@ class Example(QDialog):
         self.gamma_widget.setValue(float(self.cf['gamma']))    
         layout.addRow(self.gamma_label, self.gamma_widget)
         
+        # PREMULT
+        self.premult_label = QLabel("Premultiply Alpha")
+        self.premult_widget = QCheckBox()
+        self.premult_widget.setTristate(False)
+        self.premult_widget.setCheckState(int(self.cf['premult']))
+        layout.addRow(self.premult_label, self.premult_widget)
+        
         # PRESET
         self.preset_label = QLabel("Preset")
         self.preset_widget = QComboBox()
@@ -165,6 +172,7 @@ class Example(QDialog):
         cfg['scaler'] = self.scaler_widget.currentText()
         cfg['quality'] = str(self.cf_widget.value())
         cfg['gamma'] = str(self.gamma_widget.value())
+        cfg['premult'] = str(self.premult_widget.checkState())
         cfg['preset'] = self.preset_widget.currentText()
         cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()

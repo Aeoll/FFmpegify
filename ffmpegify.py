@@ -24,6 +24,7 @@ def convert(path, config):
     CODEC = config['codec']
     VIDFORMAT = config['format']
     GAMMA = config['gamma']
+    PREMULT = int(config['premult'])
     NAME_LEVELS = int(config['namelevels'])
 
     AUDIO = False
@@ -184,10 +185,11 @@ def convert(path, config):
 
             if MAX_FRAMES > 0:
                 cmd.extend(('-vframes', str(MAX_FRAMES)))
-
             if isVidOut:
-                # cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
-                cmd.extend(('-vf', scalestr))
+                if PREMULT:
+                    cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
+                else:
+                    cmd.extend(('-vf', scalestr))
             else:
                 cmd.extend(('-vf', scalestr))
             cmd.extend(('-sws_flags', SCALER))
