@@ -35,11 +35,9 @@ def convert(path, config):
 
     # Check if being output to video or frames
     isVidOut = True
-    vids = ['mov', 'mp4', 'mp4-via-jpg']
+    vids = ['mov', 'mp4']
     if VIDFORMAT not in vids:
         isVidOut = False
-    if VIDFORMAT == "mp4-via-jpg":
-        CULL = True # for culling jpgs after conversion
 
     file = pathlib.Path(path)
     saveDir = file  # set the directory to save the output to
@@ -84,38 +82,6 @@ def convert(path, config):
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
             inputf_abs = str(file.with_name(inputf))
 
-            # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
-            if MAX_HEIGHT <= 0 and MAX_WIDTH <= 0:
-                scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
-            elif MAX_WIDTH <= 0:
-                scalestr = "scale='-2:min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
-            elif MAX_HEIGHT <= 0:
-                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
-            else:
-                # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
-                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad=" + str(MAX_WIDTH) + ":" + str(MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
-                # maybe skip force ratio and do it manually? DOesnt work yet...
-                max_asp = float(MAX_WIDTH) / MAX_HEIGHT
-                A = "min(trunc(iw/2)*2," + str(MAX_WIDTH) + ")"
-                B = "if( gt(ih," + str(MAX_HEIGHT) + "), trunc((" + str(MAX_HEIGHT) + "*dar)/2)*2, -2 )"
-                C = "if(gt(iw," + str(MAX_WIDTH) + "), trunc((" + str(MAX_WIDTH) + "/dar)/2)*2 ,-2)"
-                D = "min( trunc(ih/2)*2," + str(MAX_HEIGHT) + ")"
-                scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
-
-            # =================================================================================
-            # mp4 via jpg for transparency issues. Convert to jpg, run ffmpegify with jpgs, run ffmpeg as normal, clean jpgs after
-            # =================================================================================
-            if (VIDFORMAT == 'mp4-via-jpg'):
-                jpgcmd = ['ffmpeg']
-                jpgcmd.extend(('-gamma', '2.2'))
-                jpgcmd.extend(('-i', inputf_abs))
-                jpgcmd.extend(('-qscale', "2"))
-                outputjpgs = str(file.with_name(stem[0:sp2[0]] + padstring + postframepart + ".jpg"))
-                jpgcmd.append(str(outputjpgs))
-                subprocess.run(jpgcmd)
-                inputf_abs = outputjpgs
-                VIDFORMAT = "mp4"
-
             # naming the video file based on parent dirs
             parts = file.parent.parts
             if (NAME_LEVELS > 0):
@@ -136,24 +102,6 @@ def convert(path, config):
                 outputf = str(saveDir.with_name('_' + outname + "_video_" + str(counter) + "." + VIDFORMAT))
                 counter = counter + 1
 
-            # ===================================
-            # FFPROBE - for metadata
-            # ===================================
-            # ffprobe = ['ffprobe']
-            # ffprobe.extend(('-v', 'quiet'))
-            # ffprobe.extend(('-print_format', 'json'))
-            # ffprobe.append(str(file))
-            # ffprobe.append('-show_format')
-            # ffprobe.append('-show_streams')
-            # ffpr = subprocess.check_output(ffprobe)
-            # ffjson = json.loads(ffpr)
-            # IN_W = ffjson['streams'][0]['coded_width']
-            # IN_H = ffjson['streams'][0]['coded_height']
-            # IN_DURATION = ffjson['streams'][0]['duration']
-            # IN_FRAMES = int(ffjson['streams'][0]['nb_frames'])
-            # IN_FPS = ffjson['streams'][0]['r_frame_rate']
-            # ===================================
-
             # create ffmpeg command and call it
             platform = sys.platform
             if platform == "win32":
@@ -165,7 +113,6 @@ def convert(path, config):
 
             if (suffix in gamma):
                 cmd.extend(('-gamma', GAMMA))
-
             cmd.extend(('-start_number', str(start_num).zfill(padding)))
             cmd.extend(('-r', str(FRAME_RATE)))
             cmd.extend(('-i', inputf_abs))
@@ -189,10 +136,14 @@ def convert(path, config):
                 # Codecs TODO DNxHR and ProRes
                 if CODEC == "H.264":
                     cmd.extend(('-c:v', 'libx264'))
-                    cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
                     # colours are always off... not sure how to fix. libx264rgb seems to help but still not right?
                     # cmd.extend(('-c:v', 'libx264rgb'))
+                    # cmd.extend(('--colormatrix', 'bt709'))
+                    # cmd.extend(('-x264opts', 'colormatrix=bt709'))
+
+                    cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
                     # cmd.extend(('-pix_fmt', 'yuv444p', '-crf', str(CRF), '-preset', PRESET))
+                    # cmd.extend(('-crf', str(CRF), '-preset', PRESET))
                 elif CODEC == "DNxHR":
                     cmd.extend(('-c:v', 'dnxhd'))
                     cmd.extend(('-profile', 'dnxhr_hq'))
@@ -201,22 +152,26 @@ def convert(path, config):
 
             if MAX_FRAMES > 0:
                 cmd.extend(('-vframes', str(MAX_FRAMES)))
-
-            # Complex filters for colour overlay?
-            # filters = []
-            # if(suffix in gamma):
-                # cmd.extend(('-f', "lavfi"))
-                # cmd.extend(('-i', 'color=s='+str(IN_W)+'x'+str(IN_H)))
-                # cmd.extend(('-t', str(IN_DURATION)))
-                # cmd.append('-filter_complex')
-                # filters.append('"[0:v][1:v]')
-                # filters = filters + "," + "eq=gamma=2.2"
-            # works but doesnt look great... still not accurate? Still alpha cutoff, now much darker. need unpremult?? idk..
-            # ffmpeg -f lavfi -i color=c=black:s=1279x719 -start_number 15 -i "Z:/0464_Friend_CocaCola/3_3D/5_3D_Renders/1_Design/nt/Assorted/v008/0464_Friend_CocaCola_nt_Assorted_v008_mantra1.%04d.exr" -filter_complex "[0:v][1:v]overlay=shortest=1,eq=gamma=1.0,premultiply=inplace=1,format=yuv420p[out],crf=21" -map "[out]" output2.mp4
-
+            # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
+            if MAX_HEIGHT <= 0 and MAX_WIDTH <= 0:
+                scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
+            elif MAX_WIDTH <= 0:
+                scalestr = "scale='-2:min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+            elif MAX_HEIGHT <= 0:
+                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
+            else:
+                # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
+                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad=" + str(MAX_WIDTH) + ":" + str(MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
+                # maybe skip force ratio and do it manually? DOesnt work yet...
+                max_asp = float(MAX_WIDTH) / MAX_HEIGHT
+                A = "min(trunc(iw/2)*2," + str(MAX_WIDTH) + ")"
+                B = "if( gt(ih," + str(MAX_HEIGHT) + "), trunc((" + str(MAX_HEIGHT) + "*dar)/2)*2, -2 )"
+                C = "if(gt(iw," + str(MAX_WIDTH) + "), trunc((" + str(MAX_WIDTH) + "/dar)/2)*2 ,-2)"
+                D = "min( trunc(ih/2)*2," + str(MAX_HEIGHT) + ")"
+                scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
             if isVidOut:
-                # cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
-                cmd.extend(('-vf', scalestr))
+                cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr))
+                # TODO Try an overlay filter for exr/tga? (look at ffmpegutil for generating solid black bg?)
             else:
                 cmd.extend(('-vf', scalestr))
             cmd.extend(('-sws_flags', SCALER))
@@ -228,12 +183,7 @@ def convert(path, config):
                 cmd.append('-shortest')
             cmd.append(outputf)
             subprocess.run(cmd)
-
-            # Clean jpgs if mp4-via-jpg is used
-            if CULL:
-                for f in file.parent.glob(preframepart + '*' + postframepart + ".jpg"):
-                    os.remove(f)
-                    pass
+            # time.sleep(3000) # for debugging
         else:
             pass
     else:

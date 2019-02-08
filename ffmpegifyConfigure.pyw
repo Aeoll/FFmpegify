@@ -9,7 +9,7 @@ from pathlib import *
 # So much boilerplate...Wow.. Just use Qt Designer...?
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
-    formats = ["mov", "mp4", "png", "tiff", "jpg"]
+    formats = ["mov", "mp4", "png", "tiff", "jpg", "mp4-via-jpg"]
     codecs = ["H.264", "DNxHR"]
     scalers = ["bicubic", "bilinear", "lanczos", "neighbor"]
 
@@ -43,7 +43,7 @@ class Example(QDialog):
         self.maxw_widget.setRange(0, 5000)    
         self.maxw_widget.setValue(int(self.cf['maxWidth']))    
         layout.addRow(self.maxw_label, self.maxw_widget)
-        
+
         # MAXHEIGHT
         self.maxh_label = QLabel("Maximum Height (0 to disable)")
         self.maxh_widget = QSpinBox()
