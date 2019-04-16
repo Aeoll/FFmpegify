@@ -33,6 +33,7 @@ def convert(path, config):
     standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
     gamma = ['.exr', '.tga']
     alltypes = standard + gamma
+    vid_suff = ['.mov', '.mp4', '.webm', '.mkv', '.avi'] # do vid-vid conversion with audio as well?
 
     # Check if being output to video or frames
     isVidOut = True
@@ -53,6 +54,15 @@ def convert(path, config):
                 break
     stem = file.stem
     suffix = file.suffix
+
+    # create ffmpeg command to append to
+    platform = sys.platform
+    if platform == "win32":
+        cmd = ['ffmpeg']
+    elif platform.startswith('linux'):  # full path to ffmpeg for linux
+        cmd = ['/usr/bin/ffmpeg']
+    else:  # full path to ffmpeg for osx
+        cmd = ['/usr/local/bin/ffmpeg']
 
     if (suffix in alltypes):
         l = len(stem)
@@ -139,15 +149,6 @@ def convert(path, config):
             # IN_FPS = ffjson['streams'][0]['r_frame_rate']
             # ===================================
 
-            # create ffmpeg command and call it
-            platform = sys.platform
-            if platform == "win32":
-                cmd = ['ffmpeg']
-            elif platform.startswith('linux'):  # full path to ffmpeg for linux
-                cmd = ['/usr/bin/ffmpeg']
-            else:  # full path to ffmpeg for osx
-                cmd = ['/usr/local/bin/ffmpeg']
-
             if (suffix in gamma):
                 cmd.extend(('-gamma', GAMMA))
             cmd.extend(('-start_number', str(start_num).zfill(padding)))
@@ -204,9 +205,21 @@ def convert(path, config):
             subprocess.run(cmd)
         else:
             pass
+    # ==================================
+    # Vid-Vid conversion (with audio)
+    # TODO
+    # ==================================
+    elif suffix in vid_suff:
+        cmd.extend(('-i', file))
+        if CODEC == "H.264":
+            cmd.extend(('-c:v', 'libx264'))
+            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+
+        outputf = str(saveDir.with_name(stem + "_converted." + VIDFORMAT))
+        cmd.append(outputf)
+        subprocess.run(cmd)
     else:
         print("Invalid file extension")
-
 
 # Read config file for settings
 def readSettings(settings):
@@ -217,7 +230,6 @@ def readSettings(settings):
         print(e)
     f.close()
     return config
-
 
 if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
