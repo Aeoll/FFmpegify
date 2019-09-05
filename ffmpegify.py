@@ -79,7 +79,10 @@ class FFMPEGIFY():
             counter = counter + 1
         return outputf
 
-    def input_stream(self, infile):
+
+    def input_stream(self, infile, cmd):
+        stem = infile.stem
+        suffix = infile.suffix
         l = len(stem)
         back = stem[::-1]
         m = re.search('\d+', back)
@@ -127,8 +130,16 @@ class FFMPEGIFY():
             # IN_FPS = ffjson['streams'][0]['r_frame_rate']
             # ===================================
 
-            return (inputf, inputf_abs, start_num)
-        return (None, None, None)
+
+            if (suffix in gamma):
+                cmd.extend(('-gamma', self.GAMMA))
+            cmd.extend(('-start_number', str(start_num).zfill(padding)))
+            cmd.extend(('-r', str(self.FRAME_RATE)))
+            cmd.extend(('-i', inputf_abs))
+
+            return cmd
+        return None
+
 
 
     def add_audio(self, infile, cmd):
@@ -181,8 +192,6 @@ class FFMPEGIFY():
 
     def convert(self, path):
         infile = self.get_input_file(path)
-
-        stem = infile.stem
         suffix = infile.suffix
 
         # create ffmpeg command to append to
@@ -196,21 +205,13 @@ class FFMPEGIFY():
 
         if (suffix in alltypes):
 
-            inputf, inputf_abs, start_num = input_stream(infile)
+            cmd = self.input_stream(infile, cmd)
 
-            if not inputf:
-                print("Cannot find input file")
+            if not cmd:
+                print("Cannot find valid input file")
                 return
 
-            outputf = self.output_filename(inputf)
-
-
-            if (suffix in gamma):
-                cmd.extend(('-gamma', self.GAMMA))
-            cmd.extend(('-start_number', str(start_num).zfill(padding)))
-            cmd.extend(('-r', str(self.FRAME_RATE)))
-            cmd.extend(('-i', inputf_abs))
-
+            outputf = self.output_filename(infile)
             cmd = self.add_audio(infile, cmd)
 
             if self.isVidOut:
@@ -240,6 +241,7 @@ class FFMPEGIFY():
                 cmd.append('-shortest')
             cmd.append(outputf)
             subprocess.run(cmd)
+
         # ==================================
         # Vid-Vid conversion (with audio)
         # TODO
