@@ -46,8 +46,8 @@ class FFMPEGIFY():
         if self.VIDFORMAT not in vids:
             isVidOut = False
 
-        file = pathlib.Path(path)
-        saveDir = file  # set the directory to save the output to
+        infile = pathlib.Path(path)
+        saveDir = infile  # set the directory to save the output to
 
         # For Directories
         if os.path.isdir(path):
@@ -55,10 +55,10 @@ class FFMPEGIFY():
             for f in files:
                 fpath = pathlib.Path(f)
                 if fpath.suffix in alltypes:
-                    file = file.joinpath(fpath)
+                    infile = infile.joinpath(fpath)
                     break
-        stem = file.stem
-        suffix = file.suffix
+        stem = infile.stem
+        suffix = infile.suffix
 
         # create ffmpeg command to append to
         platform = sys.platform
@@ -82,7 +82,7 @@ class FFMPEGIFY():
                 # glob for other frames in the folder and find the first frame to use as start number
                 preframepart = stem[0:sp2[0]]
                 postframepart = stem[sp2[1]:]
-                frames = sorted(file.parent.glob(preframepart + '*' + postframepart + suffix))
+                frames = sorted(infile.parent.glob(preframepart + '*' + postframepart + suffix))
                 start_num = int(frames[0].name[sp2[0]:sp2[1]])
                 if self.START_FRAME > 0:
                     start_num = self.START_FRAME
@@ -96,16 +96,16 @@ class FFMPEGIFY():
 
                 # get absolute path to the input file and set the outputfile
                 inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
-                inputf_abs = str(file.with_name(inputf))
+                inputf_abs = str(infile.with_name(inputf))
 
                 # naming the video file based on parent dirs
-                parts = file.parent.parts
+                parts = infile.parent.parts
                 if (self.NAME_LEVELS > 0):
                     sec = len(parts) - self.NAME_LEVELS
                     parts = parts[sec:]
                     outname = "_".join(parts)
                 else:
-                    outname = str(file.parent)
+                    outname = str(infile.parent)
                 outname = re.sub(r'\W+', '_', outname)
 
                 outputf = str(saveDir.with_name('_' + outname + "_video." + self.VIDFORMAT))
@@ -142,7 +142,7 @@ class FFMPEGIFY():
                 # ffprobe = ['ffprobe']
                 # ffprobe.extend(('-v', 'quiet'))
                 # ffprobe.extend(('-print_format', 'json'))
-                # ffprobe.append(str(file))
+                # ffprobe.append(str(infile))
                 # ffprobe.append('-show_format')
                 # ffprobe.append('-show_streams')
                 # ffpr = subprocess.check_output(ffprobe)
@@ -163,11 +163,11 @@ class FFMPEGIFY():
                 # AUDIO
                 try:
                     tracks = []
-                    tracks.extend(sorted(file.parent.glob('*.mp3')))
-                    tracks.extend(sorted(file.parent.glob('*.wav')))
+                    tracks.extend(sorted(infile.parent.glob('*.mp3')))
+                    tracks.extend(sorted(infile.parent.glob('*.wav')))
                     # also search immediate parent?
-                    tracks.extend(sorted(file.parents[1].glob('*.mp3')))
-                    tracks.extend(sorted(file.parents[1].glob('*.wav')))
+                    tracks.extend(sorted(infile.parents[1].glob('*.mp3')))
+                    tracks.extend(sorted(infile.parents[1].glob('*.wav')))
                     if (tracks):
                         self.AUDIO = True
                         # audio track offset - add controls for this?
@@ -215,7 +215,7 @@ class FFMPEGIFY():
         # TODO
         # ==================================
         elif suffix in vid_suff:
-            cmd.extend(('-i', file))
+            cmd.extend(('-i', infile))
             if self.CODEC == "H.264":
                 cmd.extend(('-c:v', 'libx264'))
                 cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
