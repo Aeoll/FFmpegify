@@ -149,6 +149,36 @@ class FFMPEGIFY():
             pass
         return cmd
 
+    def add_scaling(self, cmd):
+        # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
+        if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
+            scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
+        elif self.MAX_WIDTH <= 0:
+            scalestr = "scale='-2:min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+        elif self.MAX_HEIGHT <= 0:
+            scalestr = "scale='min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
+        else:
+            # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
+            scalestr = "scale='min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad=" + str(self.MAX_WIDTH) + ":" + str(self.MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
+            # maybe skip force ratio and do it manually? DOesnt work yet...
+            max_asp = float(self.MAX_WIDTH) / self.MAX_HEIGHT
+            A = "min(trunc(iw/2)*2," + str(self.MAX_WIDTH) + ")"
+            B = "if( gt(ih," + str(self.MAX_HEIGHT) + "), trunc((" + str(self.MAX_HEIGHT) + "*dar)/2)*2, -2 )"
+            C = "if(gt(iw," + str(self.MAX_WIDTH) + "), trunc((" + str(self.MAX_WIDTH) + "/dar)/2)*2 ,-2)"
+            D = "min( trunc(ih/2)*2," + str(self.MAX_HEIGHT) + ")"
+            scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
+
+        if self.isVidOut:
+            if self.PREMULT:
+                cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
+            else:
+                cmd.extend(('-vf', scalestr))
+        else:
+            cmd.extend(('-vf', scalestr))
+        cmd.extend(('-sws_flags', self.SCALER))
+        return cmd
+
+
     def convert(self, path):
         infile = self.get_input_file(path)
 
@@ -170,24 +200,6 @@ class FFMPEGIFY():
             if inputf:
                 outputf = self.output_filename(inputf)
 
-
-                # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
-                if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
-                    scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
-                elif self.MAX_WIDTH <= 0:
-                    scalestr = "scale='-2:min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
-                elif self.MAX_HEIGHT <= 0:
-                    scalestr = "scale='min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
-                else:
-                    # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
-                    scalestr = "scale='min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad=" + str(self.MAX_WIDTH) + ":" + str(self.MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
-                    # maybe skip force ratio and do it manually? DOesnt work yet...
-                    max_asp = float(self.MAX_WIDTH) / self.MAX_HEIGHT
-                    A = "min(trunc(iw/2)*2," + str(self.MAX_WIDTH) + ")"
-                    B = "if( gt(ih," + str(self.MAX_HEIGHT) + "), trunc((" + str(self.MAX_HEIGHT) + "*dar)/2)*2, -2 )"
-                    C = "if(gt(iw," + str(self.MAX_WIDTH) + "), trunc((" + str(self.MAX_WIDTH) + "/dar)/2)*2 ,-2)"
-                    D = "min( trunc(ih/2)*2," + str(self.MAX_HEIGHT) + ")"
-                    scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
 
                 if (suffix in gamma):
                     cmd.extend(('-gamma', self.GAMMA))
@@ -213,14 +225,8 @@ class FFMPEGIFY():
 
                 if self.MAX_FRAMES > 0:
                     cmd.extend(('-vframes', str(self.MAX_FRAMES)))
-                if self.isVidOut:
-                    if self.PREMULT:
-                        cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
-                    else:
-                        cmd.extend(('-vf', scalestr))
-                else:
-                    cmd.extend(('-vf', scalestr))
-                cmd.extend(('-sws_flags', self.SCALER))
+
+                cmd = self.add_scaling(cmd)
                 if self.VIDFORMAT == 'jpg':
                     cmd.extend(('-q:v', '2'))
                 # AUDIO OPTIONS
