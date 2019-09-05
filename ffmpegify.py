@@ -163,23 +163,37 @@ class FFMPEGIFY():
 
 
     def add_scaling(self, cmd):
-        # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
+
+        scalekw = {}
+        downscale_w = "'min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)'"
+        downscale_h = "min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)'"
+
+        # Video scaling. Want to guarantee even dimensions even if max_width and max_height aren't specified.
+        # TODO replace some of this stuff with a crop filter.
         if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
-            scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
+            scale = ['trunc(iw/2)*2', 'trunc(ih/2)*2']
         elif self.MAX_WIDTH <= 0:
-            scalestr = "scale='-2:min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
+            scale = ["-2", downscale_h]
+            # maintain original aspect ratio
+            scalekw["force_original_aspect_ratio"] = "decrease"
         elif self.MAX_HEIGHT <= 0:
-            scalestr = "scale='min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
+            scale = [downscale_w, "-2"]
         else:
-            # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
-            scalestr = "scale='min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad=" + str(self.MAX_WIDTH) + ":" + str(self.MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
-            # maybe skip force ratio and do it manually? DOesnt work yet...
-            max_asp = float(self.MAX_WIDTH) / self.MAX_HEIGHT
-            A = "min(trunc(iw/2)*2," + str(self.MAX_WIDTH) + ")"
-            B = "if( gt(ih," + str(self.MAX_HEIGHT) + "), trunc((" + str(self.MAX_HEIGHT) + "*dar)/2)*2, -2 )"
-            C = "if(gt(iw," + str(self.MAX_WIDTH) + "), trunc((" + str(self.MAX_WIDTH) + "/dar)/2)*2 ,-2)"
-            D = "min( trunc(ih/2)*2," + str(self.MAX_HEIGHT) + ")"
-            scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
+            # Original method
+            # scale = [downscale_w, downscale_h]
+            # scalekw["force_original_aspect_ratio"] = "decrease"
+            # scalekw["pad"] = str(MAX_WIDTH) + ":" + str(MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
+            # This currently causes issues if the W or H are greater than the max and the
+            # other dimension is no longer divisible by 2 when scaled down, so add padding.
+            max_asp = float(MAX_WIDTH)/MAX_HEIGHT
+            A = downscale_w
+            B = "if(gt(ih,"+str(MAX_HEIGHT)+"), trunc(("+str(MAX_HEIGHT)+"*dar)/2)*2, -2)"
+            C = "if(gt(iw,"+str(MAX_WIDTH)+ "), trunc(("+str(MAX_WIDTH) +"*dar)/2)*2, -2)"
+            D = downscale_h
+            scale = ["'if( gt(dar,"+str(max_asp)+"), "+ A +", "+B+")'", "'if( gt(dar,"+str(max_asp)+"), "+C+", "+D+" )'"]
+        scalestr = scale[0] + ":" + scale[1]
+        for key, val in scalekw.iteritems():
+            scalestr = scalestr + ":" + key + ":" + val
 
         if self.isVidOut:
             if self.PREMULT:
