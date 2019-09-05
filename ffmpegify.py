@@ -16,7 +16,7 @@ standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
 gamma = ['.exr', '.tga']
 alltypes = standard + gamma
 vid_suff = ['.mov', '.mp4', '.webm', '.mkv', '.avi'] # do vid-vid conversion with audio as well?
-vids = ['mov', 'mp4', 'mp4-via-jpg']
+vids = ['mov', 'mp4', 'mp4-via-jpg', 'webm']
 
 
 
@@ -229,6 +229,13 @@ class FFMPEGIFY():
                 pass
         elif self.VIDFORMAT == 'jpg':
             OUT_ARGS['q:v'] = '2'
+
+        if self.VIDFORMAT == 'webm':
+            # Possibly implement two-pass for webm
+            OUT_ARGS = dict()
+            OUT_ARGS['crf'] = str(self.CRF)
+            OUT_ARGS['vcodec'] = "libvpx"
+            OUT_ARGS['b:v'] = 0
 
 
         if self.MAX_FRAMES > 0:

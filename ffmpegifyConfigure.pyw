@@ -9,7 +9,7 @@ from pathlib import *
 # So much boilerplate...Wow.. Just use Qt Designer...?
 class Example(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
-    formats = ["mov", "mp4", "png", "tiff", "jpg"]
+    formats = ["mov", "mp4", "webm", "png", "tiff", "jpg"]
     codecs = ["H.264", "DNxHR"]
     scalers = ["bicubic", "bilinear", "lanczos", "neighbor"]
 
