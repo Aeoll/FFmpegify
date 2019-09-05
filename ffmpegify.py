@@ -160,6 +160,7 @@ class FFMPEGIFY():
             pass
         return cmd
 
+
     def add_scaling(self, cmd):
         # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
         if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
@@ -188,6 +189,7 @@ class FFMPEGIFY():
             cmd.extend(('-vf', scalestr))
         cmd.extend(('-sws_flags', self.SCALER))
         return cmd
+
 
     def build_output(self, outputf, cmd):
         if self.isVidOut:
@@ -220,6 +222,21 @@ class FFMPEGIFY():
 
         return cmd
 
+    def video_to_video(self, infile, cmd):
+        # ==================================
+        # Vid-Vid conversion (with audio)
+        # TODO
+        # ==================================
+        stem = infile.stem
+        cmd.extend(('-i', infile))
+        saveDir = infile
+        if self.CODEC == "H.264":
+            cmd.extend(('-c:v', 'libx264'))
+            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
+
+        outputf = str(saveDir.with_name(stem + "_converted." + self.VIDFORMAT))
+        cmd.append(outputf)
+
 
     def convert(self, path):
         infile = self.get_input_file(path)
@@ -247,18 +264,8 @@ class FFMPEGIFY():
             cmd = self.build_output(outputf, cmd)
             subprocess.run(cmd)
 
-        # ==================================
-        # Vid-Vid conversion (with audio)
-        # TODO
-        # ==================================
         elif suffix in vid_suff:
-            cmd.extend(('-i', infile))
-            if self.CODEC == "H.264":
-                cmd.extend(('-c:v', 'libx264'))
-                cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
-
-            outputf = str(saveDir.with_name(stem + "_converted." + self.VIDFORMAT))
-            cmd.append(outputf)
+            cmd = self.video_to_video(cmd)
             subprocess.run(cmd)
         else:
             print("Invalid file extension")
