@@ -79,6 +79,56 @@ class FFMPEGIFY():
             counter = counter + 1
         return outputf
 
+    def input_stream(self, infile):
+        l = len(stem)
+        back = stem[::-1]
+        m = re.search('\d+', back)
+        if (m):
+            # simple regex match - find digit from the end of the stem
+            sp = m.span(0)
+            sp2 = [l - a for a in sp]
+            sp2.reverse()
+
+            # glob for other frames in the folder and find the first frame to use as start number
+            preframepart = stem[0:sp2[0]]
+            postframepart = stem[sp2[1]:]
+            frames = sorted(infile.parent.glob(preframepart + '*' + postframepart + suffix))
+            start_num = int(frames[0].name[sp2[0]:sp2[1]])
+            if self.START_FRAME > 0:
+                start_num = self.START_FRAME
+
+            # get padding for frame num
+            padding = sp2[1] - sp2[0]
+            padstring = '%' + format(padding, '02') + 'd'  # eg %05d
+            # fix for unpadded frame numbers
+            if len(frames[0].name) != len(frames[-1].name):
+                padstring = '%' + 'd'
+
+            # get absolute path to the input file
+            inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
+            inputf_abs = str(infile.with_name(inputf))
+
+
+            # ============================================
+            # FFPROBE - Probably easier to use this metadata
+            # =============================================
+            # ffprobe = ['ffprobe']
+            # ffprobe.extend(('-v', 'quiet'))
+            # ffprobe.extend(('-print_format', 'json'))
+            # ffprobe.append(str(infile))
+            # ffprobe.append('-show_format')
+            # ffprobe.append('-show_streams')
+            # ffpr = subprocess.check_output(ffprobe)
+            # ffjson = json.loads(ffpr)
+            # IN_W = ffjson['streams'][0]['coded_width']
+            # IN_H = ffjson['streams'][0]['coded_height']
+            # IN_DURATION = ffjson['streams'][0]['duration']
+            # IN_FRAMES = int(ffjson['streams'][0]['nb_frames'])
+            # IN_FPS = ffjson['streams'][0]['r_frame_rate']
+            # ===================================
+
+            return (inputf, inputf_abs, start_num)
+        return (None, None, None)
 
 
 
@@ -98,34 +148,9 @@ class FFMPEGIFY():
             cmd = ['/usr/local/bin/ffmpeg']
 
         if (suffix in alltypes):
-            l = len(stem)
-            back = stem[::-1]
-            m = re.search('\d+', back)
-            if (m):
-                # simple regex match - find digit from the end of the stem
-                sp = m.span(0)
-                sp2 = [l - a for a in sp]
-                sp2.reverse()
 
-                # glob for other frames in the folder and find the first frame to use as start number
-                preframepart = stem[0:sp2[0]]
-                postframepart = stem[sp2[1]:]
-                frames = sorted(infile.parent.glob(preframepart + '*' + postframepart + suffix))
-                start_num = int(frames[0].name[sp2[0]:sp2[1]])
-                if self.START_FRAME > 0:
-                    start_num = self.START_FRAME
-
-                # get padding for frame num
-                padding = sp2[1] - sp2[0]
-                padstring = '%' + format(padding, '02') + 'd'  # eg %05d
-                # fix for unpadded frame numbers
-                if len(frames[0].name) != len(frames[-1].name):
-                    padstring = '%' + 'd'
-
-                # get absolute path to the input file and set the outputfile
-                inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
-                inputf_abs = str(infile.with_name(inputf))
-
+            inputf, inputf_abs, start_num = input_stream(infile)
+            if inputf:
                 outputf = self.output_filename(inputf)
 
 
@@ -146,24 +171,6 @@ class FFMPEGIFY():
                     C = "if(gt(iw," + str(self.MAX_WIDTH) + "), trunc((" + str(self.MAX_WIDTH) + "/dar)/2)*2 ,-2)"
                     D = "min( trunc(ih/2)*2," + str(self.MAX_HEIGHT) + ")"
                     scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
-
-                # ============================================
-                # FFPROBE - Probably easier to use this metadata
-                # =============================================
-                # ffprobe = ['ffprobe']
-                # ffprobe.extend(('-v', 'quiet'))
-                # ffprobe.extend(('-print_format', 'json'))
-                # ffprobe.append(str(infile))
-                # ffprobe.append('-show_format')
-                # ffprobe.append('-show_streams')
-                # ffpr = subprocess.check_output(ffprobe)
-                # ffjson = json.loads(ffpr)
-                # IN_W = ffjson['streams'][0]['coded_width']
-                # IN_H = ffjson['streams'][0]['coded_height']
-                # IN_DURATION = ffjson['streams'][0]['duration']
-                # IN_FRAMES = int(ffjson['streams'][0]['nb_frames'])
-                # IN_FPS = ffjson['streams'][0]['r_frame_rate']
-                # ===================================
 
                 if (suffix in gamma):
                     cmd.extend(('-gamma', self.GAMMA))
