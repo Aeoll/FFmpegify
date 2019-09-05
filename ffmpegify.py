@@ -57,9 +57,33 @@ class FFMPEGIFY():
         return infile
 
 
+    def get_output_filename(self, infile):
+        # OUTPUT FILENAME
+        saveDir = infile # naming the video file based on parent dir. Could change this later.
+        parts = infile.parent.parts
+        if (self.NAME_LEVELS > 0):
+            sec = len(parts) - self.NAME_LEVELS
+            parts = parts[sec:]
+            outname = "_".join(parts)
+        else:
+            outname = str(infile.parent)
+        outname = re.sub(r'\W+', '_', outname)
+        outputf = str(saveDir.with_name('_' + outname + "_video." + self.VIDFORMAT))
+        if not self.isVidOut:
+            outputf = str(saveDir.with_name('_' + preframepart + "_" + padstring + "." + self.VIDFORMAT))
+
+        # if the video already exists create do not overwrite it
+        counter = 1
+        while pathlib.Path(outputf).exists():
+            outputf = str(saveDir.with_name('_' + outname + "_video_" + str(counter) + "." + self.VIDFORMAT))
+            counter = counter + 1
+        return outputf
+
+
+
+
     def convert(self, path):
         infile = self.get_input_file(path)
-        saveDir = infile  # set the directory to save the output to
 
         stem = infile.stem
         suffix = infile.suffix
@@ -102,25 +126,8 @@ class FFMPEGIFY():
                 inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
                 inputf_abs = str(infile.with_name(inputf))
 
-                # naming the video file based on parent dirs
-                parts = infile.parent.parts
-                if (self.NAME_LEVELS > 0):
-                    sec = len(parts) - self.NAME_LEVELS
-                    parts = parts[sec:]
-                    outname = "_".join(parts)
-                else:
-                    outname = str(infile.parent)
-                outname = re.sub(r'\W+', '_', outname)
+                outputf = self.output_filename(inputf)
 
-                outputf = str(saveDir.with_name('_' + outname + "_video." + self.VIDFORMAT))
-                if not self.isVidOut:
-                    outputf = str(saveDir.with_name('_' + preframepart + "_" + padstring + "." + self.VIDFORMAT))
-
-                # if the video already exists create do not overwrite it
-                counter = 1
-                while pathlib.Path(outputf).exists():
-                    outputf = str(saveDir.with_name('_' + outname + "_video_" + str(counter) + "." + self.VIDFORMAT))
-                    counter = counter + 1
 
                 # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
                 if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
