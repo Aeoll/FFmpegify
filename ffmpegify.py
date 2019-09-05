@@ -260,6 +260,7 @@ class FFMPEGIFY():
         # Vid-Vid conversion (with audio)
         # TODO
         # ==================================
+        stem = infile.stem
         saveDir = infile
         STREAM = ffmpeg.input(infile)
 
