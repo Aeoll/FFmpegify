@@ -44,11 +44,9 @@ class FFMPEGIFY():
             self.isVidOut = False
 
 
-    def convert(self, path, config):
+    def get_input_file(self, path):
+        # Parse filename
         infile = pathlib.Path(path)
-        saveDir = infile  # set the directory to save the output to
-
-        # For Directories
         if os.path.isdir(path):
             files = os.listdir(path)
             for f in files:
@@ -56,6 +54,13 @@ class FFMPEGIFY():
                 if fpath.suffix in alltypes:
                     infile = infile.joinpath(fpath)
                     break
+        return infile
+
+
+    def convert(self, path):
+        infile = self.get_input_file(path)
+        saveDir = infile  # set the directory to save the output to
+
         stem = infile.stem
         suffix = infile.suffix
 
@@ -239,5 +244,5 @@ if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
     config = readSettings(path)
     F = FFMPEGIFY(config)
-    F.convert(sys.argv[1], config)
+    F.convert(sys.argv[1])
     # input()
