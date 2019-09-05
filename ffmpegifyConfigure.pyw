@@ -18,7 +18,7 @@ class Example(QDialog):
         self.loc = ffmpegify_loc
         self.initUI()
 
-    def initUI(self):    
+    def initUI(self):
         self.cf = self.readSettings()
 
         # main top level layout
@@ -28,77 +28,77 @@ class Example(QDialog):
         # FRAMERATE
         self.fps_label = QLabel("Frame Rate")
         self.fps_widget = QSpinBox()
-        self.fps_widget.setValue(int(self.cf['FPS']))    
+        self.fps_widget.setValue(int(self.cf['FPS']))
         layout.addRow(self.fps_label, self.fps_widget)
 
         # QUALITY
         self.cf_label = QLabel("Quality (0-51: Lower=Better Quality)")
         self.cf_widget = QSpinBox()
-        self.cf_widget.setValue(int(self.cf['quality']))    
+        self.cf_widget.setValue(int(self.cf['quality']))
         layout.addRow(self.cf_label, self.cf_widget)
 
         # MAXWIDTH
         self.maxw_label = QLabel("Maximum Width (0 to disable)")
         self.maxw_widget = QSpinBox()
-        self.maxw_widget.setRange(0, 5000)    
-        self.maxw_widget.setValue(int(self.cf['maxWidth']))    
+        self.maxw_widget.setRange(0, 5000)
+        self.maxw_widget.setValue(int(self.cf['maxWidth']))
         layout.addRow(self.maxw_label, self.maxw_widget)
 
         # MAXHEIGHT
         self.maxh_label = QLabel("Maximum Height (0 to disable)")
         self.maxh_widget = QSpinBox()
-        self.maxh_widget.setRange(0, 5000)    
-        self.maxh_widget.setValue(int(self.cf['maxHeight']))    
+        self.maxh_widget.setRange(0, 5000)
+        self.maxh_widget.setValue(int(self.cf['maxHeight']))
         layout.addRow(self.maxh_label, self.maxh_widget)
 
         # SCALER
         self.scaler_label = QLabel("Scaling Algorithm")
         self.scaler_widget = QComboBox()
         for p in self.scalers:
-            self.scaler_widget.addItem(p)        
-        self.scaler_widget.setCurrentText(self.cf['scaler'])            
+            self.scaler_widget.addItem(p)
+        self.scaler_widget.setCurrentText(self.cf['scaler'])
         layout.addRow(self.scaler_label, self.scaler_widget)
 
         # START FRAME
         self.startframe_label = QLabel("Start Frame (0 for first in sequence)")
         self.startframe_widget = QSpinBox()
-        self.startframe_widget.setRange(0, 5000)    
-        self.startframe_widget.setValue(int(self.cf['startFrame']))    
+        self.startframe_widget.setRange(0, 5000)
+        self.startframe_widget.setValue(int(self.cf['startFrame']))
         layout.addRow(self.startframe_label, self.startframe_widget)
 
         # END FRAME (LEN)
         self.endframe_label = QLabel("Max Frames (0 for no maximum)")
         self.endframe_widget = QSpinBox()
-        self.endframe_widget.setRange(0, 5000)    
-        self.endframe_widget.setValue(int(self.cf['maxFrames']))    
+        self.endframe_widget.setRange(0, 5000)
+        self.endframe_widget.setValue(int(self.cf['maxFrames']))
         layout.addRow(self.endframe_label, self.endframe_widget)
 
         # GAMMA
         self.gamma_label = QLabel("Gamma (EXR/TGA only)")
         self.gamma_widget = QDoubleSpinBox()
-        self.gamma_widget.setValue(float(self.cf['gamma']))    
+        self.gamma_widget.setValue(float(self.cf['gamma']))
         layout.addRow(self.gamma_label, self.gamma_widget)
-        
+
         # PREMULT
         self.premult_label = QLabel("Premultiply Alpha")
         self.premult_widget = QCheckBox()
         self.premult_widget.setTristate(False)
         self.premult_widget.setCheckState(int(self.cf['premult']))
         layout.addRow(self.premult_label, self.premult_widget)
-        
+
         # PRESET
         self.preset_label = QLabel("Preset")
         self.preset_widget = QComboBox()
         for p in self.presets:
-            self.preset_widget.addItem(p)   
+            self.preset_widget.addItem(p)
         self.preset_widget.setCurrentText(self.cf['preset'])
         layout.addRow(self.preset_label, self.preset_widget)
-        
+
         # CODEC
         self.codec_label = QLabel("Codec")
         self.codec_widget = QComboBox()
         for p in self.codecs:
-            self.codec_widget.addItem(p)   
+            self.codec_widget.addItem(p)
         self.codec_widget.setCurrentText(self.cf['codec'])
         layout.addRow(self.codec_label, self.codec_widget)
 
@@ -106,57 +106,57 @@ class Example(QDialog):
         self.format_label = QLabel("Format")
         self.format_widget = QComboBox()
         for p in self.formats:
-            self.format_widget.addItem(p)        
-        self.format_widget.setCurrentText(self.cf['format'])            
+            self.format_widget.addItem(p)
+        self.format_widget.setCurrentText(self.cf['format'])
         layout.addRow(self.format_label, self.format_widget)
 
         # NAMING LEVELS
         self.namelevels_label = QLabel("Naming Levels (0 for full path)")
         self.namelevels_widget = QSpinBox()
-        self.namelevels_widget.setRange(0, 10)    
-        self.namelevels_widget.setValue(int(self.cf['namelevels']))    
+        self.namelevels_widget.setRange(0, 10)
+        self.namelevels_widget.setValue(int(self.cf['namelevels']))
         layout.addRow(self.namelevels_label, self.namelevels_widget)
-        
+
         # AUDIO OFFSET
         self.audiooffset_label = QLabel("Audio Offset (Seconds)")
         self.audiooffset_widget = QSpinBox()
-        self.audiooffset_widget.setRange(-200, 200)    
-        self.audiooffset_widget.setValue(int(self.cf['audiooffset']))    
+        self.audiooffset_widget.setRange(-200, 200)
+        self.audiooffset_widget.setValue(int(self.cf['audiooffset']))
         layout.addRow(self.audiooffset_label, self.audiooffset_widget)
-        
+
         # Add form to main layout
-        mainlayout.addLayout(layout)  
-        
+        mainlayout.addLayout(layout)
+
         # Spacer after form
         line = QFrame()
-        line.setMinimumSize(0, 10)             
-        mainlayout.addWidget(line)     
+        line.setMinimumSize(0, 10)
+        mainlayout.addWidget(line)
 
         # ButtonBox
-        self.bbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)    
-        self.bbox.setCenterButtons(True)  
+        self.bbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.bbox.setCenterButtons(True)
         self.bbox.accepted.connect(self.writeSettings)
         self.bbox.rejected.connect(self.reject)
-        mainlayout.addWidget(self.bbox)      
+        mainlayout.addWidget(self.bbox)
 
-        self.setLayout(mainlayout)  
+        self.setLayout(mainlayout)
         self.setGeometry(300, 300, 250, 150)
-        self.setWindowTitle('FFmpegify Settings')    
-        self.show()        
+        self.setWindowTitle('FFmpegify Settings')
+        self.show()
 
     # Open it under the cursor
     def showEvent(self, event):
         geom = self.frameGeometry()
         geom.moveCenter(QCursor.pos())
         self.setGeometry(geom)
-        super(Example, self).showEvent(event)    
+        super(Example, self).showEvent(event)
 
     # Prevent hitting Enter from pressing OK button
     def keyPressEvent(self, event):
             if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
                 pass
 
-    def readSettings(self):    
+    def readSettings(self):
         with open(Path(self.loc).with_name('settings.json'), 'r') as f:
             config = json.load(f)
         return config
