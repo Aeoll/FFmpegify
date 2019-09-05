@@ -131,6 +131,23 @@ class FFMPEGIFY():
         return (None, None, None)
 
 
+    def add_audio(self, infile, cmd):
+        # AUDIO
+        try:
+            tracks = []
+            tracks.extend(sorted(infile.parent.glob('*.mp3')))
+            tracks.extend(sorted(infile.parent.glob('*.wav')))
+            # also search immediate parent?
+            tracks.extend(sorted(infile.parents[1].glob('*.mp3')))
+            tracks.extend(sorted(infile.parents[1].glob('*.wav')))
+            if (tracks):
+                self.AUDIO = True
+                # audio track offset - add controls for this?
+                cmd.extend(('-itsoffset', str(self.AUDIO_OFFSET)))
+                cmd.extend(('-i', str(tracks[0])))
+        except:
+            pass
+        return cmd
 
     def convert(self, path):
         infile = self.get_input_file(path)
@@ -178,21 +195,8 @@ class FFMPEGIFY():
                 cmd.extend(('-r', str(self.FRAME_RATE)))
                 cmd.extend(('-i', inputf_abs))
 
-                # AUDIO
-                try:
-                    tracks = []
-                    tracks.extend(sorted(infile.parent.glob('*.mp3')))
-                    tracks.extend(sorted(infile.parent.glob('*.wav')))
-                    # also search immediate parent?
-                    tracks.extend(sorted(infile.parents[1].glob('*.mp3')))
-                    tracks.extend(sorted(infile.parents[1].glob('*.wav')))
-                    if (tracks):
-                        self.AUDIO = True
-                        # audio track offset - add controls for this?
-                        cmd.extend(('-itsoffset', str(self.AUDIO_OFFSET)))
-                        cmd.extend(('-i', str(tracks[0])))
-                except:
-                    pass
+                cmd = self.add_audio(infile, cmd)
+
                 if self.isVidOut:
                     # Codecs TODO DNxHR and ProRes?
                     if self.CODEC == "H.264":
