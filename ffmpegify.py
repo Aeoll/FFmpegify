@@ -9,6 +9,7 @@ import subprocess
 from pathlib import *
 import time
 import json
+import ffmpeg
 
 
 standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
@@ -222,36 +223,39 @@ class FFMPEGIFY():
 
         return cmd
 
-    def video_to_video(self, infile, cmd):
+    def video_to_video(self, infile):
         # ==================================
         # Vid-Vid conversion (with audio)
         # TODO
         # ==================================
-        stem = infile.stem
-        cmd.extend(('-i', infile))
         saveDir = infile
-        if self.CODEC == "H.264":
-            cmd.extend(('-c:v', 'libx264'))
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
+        STREAM = ffmpeg.input(infile)
 
+        OUT_ARGS = dict()
+        if self.CODEC == "H.264":
+            OUT_ARGS['vcodec'] = "libx264"
+            OUT_ARGS['pix_fmt'] = 'yuv420p'
+            OUT_ARGS['crf'] = str(self.CRF)
+            OUT_ARGS['preset'] = self.PRESET
         outputf = str(saveDir.with_name(stem + "_converted." + self.VIDFORMAT))
-        cmd.append(outputf)
+        STREAM = STREAM.output(outputf, **OUT_ARGS)
+
+        return STREAM
 
 
     def convert(self, path):
         infile = self.get_input_file(path)
         suffix = infile.suffix
 
-        # create ffmpeg command to append to
-        platform = sys.platform
-        if platform == "win32":
-            cmd = ['ffmpeg']
-        elif platform.startswith('linux'):  # full path to ffmpeg for linux
-            cmd = ['/usr/bin/ffmpeg']
-        else:  # full path to ffmpeg for osx
-            cmd = ['/usr/local/bin/ffmpeg']
-
         if (suffix in alltypes):
+            # create ffmpeg command to append to
+            platform = sys.platform
+            if platform == "win32":
+                cmd = ['ffmpeg']
+            elif platform.startswith('linux'):  # full path to ffmpeg for linux
+                cmd = ['/usr/bin/ffmpeg']
+            else:  # full path to ffmpeg for osx
+                cmd = ['/usr/local/bin/ffmpeg']
 
             cmd = self.input_stream(infile, cmd)
 
@@ -265,8 +269,9 @@ class FFMPEGIFY():
             subprocess.run(cmd)
 
         elif suffix in vid_suff:
-            cmd = self.video_to_video(cmd)
-            subprocess.run(cmd)
+            STREAM = self.video_to_video(infile)
+            (stdout, stderr) = STREAM.run(capture_stdout=True, capture_stderr=True)
+            print(stderr.decode("utf-8")) # ffmpeg pipes everything to stderr
         else:
             print("Invalid file extension")
 
