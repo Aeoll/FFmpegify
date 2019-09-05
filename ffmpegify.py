@@ -197,47 +197,49 @@ class FFMPEGIFY():
         if (suffix in alltypes):
 
             inputf, inputf_abs, start_num = input_stream(infile)
-            if inputf:
-                outputf = self.output_filename(inputf)
+
+            if not inputf:
+                print("Cannot find input file")
+                return
+
+            outputf = self.output_filename(inputf)
 
 
-                if (suffix in gamma):
-                    cmd.extend(('-gamma', self.GAMMA))
-                cmd.extend(('-start_number', str(start_num).zfill(padding)))
-                cmd.extend(('-r', str(self.FRAME_RATE)))
-                cmd.extend(('-i', inputf_abs))
+            if (suffix in gamma):
+                cmd.extend(('-gamma', self.GAMMA))
+            cmd.extend(('-start_number', str(start_num).zfill(padding)))
+            cmd.extend(('-r', str(self.FRAME_RATE)))
+            cmd.extend(('-i', inputf_abs))
 
-                cmd = self.add_audio(infile, cmd)
+            cmd = self.add_audio(infile, cmd)
 
-                if self.isVidOut:
-                    # Codecs TODO DNxHR and ProRes?
-                    if self.CODEC == "H.264":
-                        cmd.extend(('-c:v', 'libx264'))
-                        cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
-                        # colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
-                        # cmd.extend(('-c:v', 'libx264rgb'))
-                        # cmd.extend(('-pix_fmt', 'yuv444p', '-crf', str(self.CRF), '-preset', self.PRESET))
-                    elif self.CODEC == "DNxHR":
-                        cmd.extend(('-c:v', 'dnxhd'))
-                        cmd.extend(('-profile', 'dnxhr_hq'))
-                    else:
-                        pass
+            if self.isVidOut:
+                # Codecs TODO DNxHR and ProRes?
+                if self.CODEC == "H.264":
+                    cmd.extend(('-c:v', 'libx264'))
+                    cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
+                    # colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
+                    # cmd.extend(('-c:v', 'libx264rgb'))
+                    # cmd.extend(('-pix_fmt', 'yuv444p', '-crf', str(self.CRF), '-preset', self.PRESET))
+                elif self.CODEC == "DNxHR":
+                    cmd.extend(('-c:v', 'dnxhd'))
+                    cmd.extend(('-profile', 'dnxhr_hq'))
+                else:
+                    pass
 
-                if self.MAX_FRAMES > 0:
-                    cmd.extend(('-vframes', str(self.MAX_FRAMES)))
+            if self.MAX_FRAMES > 0:
+                cmd.extend(('-vframes', str(self.MAX_FRAMES)))
 
-                cmd = self.add_scaling(cmd)
-                if self.VIDFORMAT == 'jpg':
-                    cmd.extend(('-q:v', '2'))
-                # AUDIO OPTIONS
-                if self.AUDIO:
-                    cmd.extend(('-c:a', 'aac'))
-                    cmd.extend(('-b:a', '320k'))
-                    cmd.append('-shortest')
-                cmd.append(outputf)
-                subprocess.run(cmd)
-            else:
-                pass
+            cmd = self.add_scaling(cmd)
+            if self.VIDFORMAT == 'jpg':
+                cmd.extend(('-q:v', '2'))
+            # AUDIO OPTIONS
+            if self.AUDIO:
+                cmd.extend(('-c:a', 'aac'))
+                cmd.extend(('-b:a', '320k'))
+                cmd.append('-shortest')
+            cmd.append(outputf)
+            subprocess.run(cmd)
         # ==================================
         # Vid-Vid conversion (with audio)
         # TODO
