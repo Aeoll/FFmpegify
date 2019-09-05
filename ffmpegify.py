@@ -73,7 +73,7 @@ class FFMPEGIFY():
         if not self.isVidOut:
             outputf = str(saveDir.with_name('_' + preframepart + "_" + padstring + "." + self.VIDFORMAT))
 
-        # if the video already exists create do not overwrite it
+        # If the video already exists create do not overwrite it
         counter = 1
         while pathlib.Path(outputf).exists():
             outputf = str(saveDir.with_name('_' + outname + "_video_" + str(counter) + "." + self.VIDFORMAT))
@@ -81,7 +81,14 @@ class FFMPEGIFY():
         return outputf
 
 
-    def input_stream(self, infile, cmd):
+    def input_stream(self, infile):
+        # Generate ffmpeg stream
+
+        IN_ARGS = dict() # arguments for input stream (would be placed prior to -i on commandline)
+
+        # Parse input filename for framenumber
+        # simple regex match - find digits at the end of the filename.
+        # Examples: frame.0001.exr, frame0001.exr, frame1.exr
         stem = infile.stem
         suffix = infile.suffix
         l = len(stem)
@@ -113,6 +120,7 @@ class FFMPEGIFY():
             inputf_abs = str(infile.with_name(inputf))
 
 
+
             # ============================================
             # FFPROBE - Probably easier to use this metadata
             # =============================================
@@ -132,18 +140,17 @@ class FFMPEGIFY():
             # ===================================
 
 
-            if (suffix in gamma):
-                cmd.extend(('-gamma', self.GAMMA))
-            cmd.extend(('-start_number', str(start_num).zfill(padding)))
-            cmd.extend(('-r', str(self.FRAME_RATE)))
-            cmd.extend(('-i', inputf_abs))
-
-            return cmd
+            if suffix in gamma:
+                IN_ARGS['gamma'] = self.GAMMA
+            IN_ARGS['start_number'] = str(start_num).zfill(padding)
+            IN_ARGS['framerate'] = str(self.FRAME_RATE)
+            STREAM = ffmpeg.input(inputf_abs, **IN_ARGS)
+            return STREAM
         return None
 
 
 
-    def add_audio(self, infile, cmd):
+    def add_audio(self, infile, STREAM):
         # AUDIO
         try:
             tracks = []
@@ -155,14 +162,13 @@ class FFMPEGIFY():
             if (tracks):
                 self.AUDIO = True
                 # audio track offset - add controls for this?
-                cmd.extend(('-itsoffset', str(self.AUDIO_OFFSET)))
-                cmd.extend(('-i', str(tracks[0])))
-        except:
-            pass
-        return cmd
+                return STREAM.input(str(tracks[0]), {'itsoffset': str(self.AUDIO_OFFSET)})
+        except Exception as e:
+            print("Error adding audio: " + str(e))
+        return STREAM
 
 
-    def add_scaling(self, cmd):
+    def add_scaling(self, STREAM):
 
         scalekw = {}
         downscale_w = "'min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)'"
@@ -191,51 +197,63 @@ class FFMPEGIFY():
             C = "if(gt(iw,"+str(MAX_WIDTH)+ "), trunc(("+str(MAX_WIDTH) +"*dar)/2)*2, -2)"
             D = downscale_h
             scale = ["'if( gt(dar,"+str(max_asp)+"), "+ A +", "+B+")'", "'if( gt(dar,"+str(max_asp)+"), "+C+", "+D+" )'"]
-        scalestr = scale[0] + ":" + scale[1]
-        for key, val in scalekw.iteritems():
-            scalestr = scalestr + ":" + key + ":" + val
-
-        if self.isVidOut:
-            if self.PREMULT:
-                cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
-            else:
-                cmd.extend(('-vf', scalestr))
-        else:
-            cmd.extend(('-vf', scalestr))
-        cmd.extend(('-sws_flags', self.SCALER))
-        return cmd
 
 
-    def build_output(self, outputf, cmd):
+        STREAM = STREAM.filter('scale', scale[0], scale[1], **scalekw)
+
+        return STREAM
+
+
+    def build_output(self, infile, STREAM):
+        outputf = self.get_output_filename(infile)
+
+        OUT_ARGS = dict()
+
         if self.isVidOut:
             # Codecs TODO DNxHR and ProRes?
             if self.CODEC == "H.264":
-                cmd.extend(('-c:v', 'libx264'))
-                cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(self.CRF), '-preset', self.PRESET))
-                # colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
-                # cmd.extend(('-c:v', 'libx264rgb'))
-                # cmd.extend(('-pix_fmt', 'yuv444p', '-crf', str(self.CRF), '-preset', self.PRESET))
+                OUT_ARGS['vcodec'] = 'libx264'
+                OUT_ARGS['vprofile'] ="baseline"
+                OUT_ARGS['pix_fmt'] ="yuv420p"
+                OUT_ARGS['crf'] = str(self.CRF)
+                OUT_ARGS['preset']  = self.PRESET
+                # Colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
+                # John Carmack blogpost: https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                # OUT_ARGS['vcodec'] = 'libx264rgb'
+                # OUT_ARGS['pix_fmt'] ="yuv444p"
+                # OUT_ARGS['pix_fmt'] ="yuvj420p"
             elif self.CODEC == "DNxHR":
-                cmd.extend(('-c:v', 'dnxhd'))
-                cmd.extend(('-profile', 'dnxhr_hq'))
+                OUT_ARGS['vcodec'] = 'dnxhd'
+                OUT_ARGS['profile']  = 'dnxhr_hq'
             else:
                 pass
+        elif self.VIDFORMAT == 'jpg':
+            OUT_ARGS['q:v'] = '2'
+
 
         if self.MAX_FRAMES > 0:
-            cmd.extend(('-vframes', str(self.MAX_FRAMES)))
+            OUT_ARGS['-vframes'] = str(self.MAX_FRAMES)
 
-        cmd = self.add_scaling(cmd)
+        # Add premult filter. Maybe causing problems??
+        if self.isVidOut and self.PREMULT:
+            STREAM = STREAM.filter('premultiply', inplace="1")
 
-        if self.VIDFORMAT == 'jpg':
-            cmd.extend(('-q:v', '2'))
-        # AUDIO OPTIONS
+        # Add scaling
+        STREAM = self.add_scaling(STREAM)
+        OUT_ARGS["sws_flags"] = self.SCALER
+
+        # Add audio options if audio stream added
         if self.AUDIO:
-            cmd.extend(('-c:a', 'aac'))
-            cmd.extend(('-b:a', '320k'))
-            cmd.append('-shortest')
-        cmd.append(outputf)
+            OUT_ARGS['c:a': 'aac']
+            OUT_ARGS['b:a': '320k']
+            OUT_ARGS['shortest': None]
 
-        return cmd
+
+        STREAM = STREAM.output(outputf, **OUT_ARGS)
+
+        return STREAM
+
+
 
     def video_to_video(self, infile):
         # ==================================
@@ -260,34 +278,21 @@ class FFMPEGIFY():
     def convert(self, path):
         infile = self.get_input_file(path)
         suffix = infile.suffix
-
         if (suffix in alltypes):
-            # create ffmpeg command to append to
-            platform = sys.platform
-            if platform == "win32":
-                cmd = ['ffmpeg']
-            elif platform.startswith('linux'):  # full path to ffmpeg for linux
-                cmd = ['/usr/bin/ffmpeg']
-            else:  # full path to ffmpeg for osx
-                cmd = ['/usr/local/bin/ffmpeg']
-
-            cmd = self.input_stream(infile, cmd)
-
-            if not cmd:
-                print("Cannot find valid input file")
+            STREAM = self.input_stream(infile)
+            if not STREAM:
+                print("Cannot find valid input file.")
                 return
-
-            outputf = self.output_filename(infile)
-            cmd = self.add_audio(infile, cmd)
-            cmd = self.build_output(outputf, cmd)
-            subprocess.run(cmd)
-
+            STREAM = self.add_audio(infile, STREAM)
+            STREAM = self.build_output(infile, STREAM)
         elif suffix in vid_suff:
             STREAM = self.video_to_video(infile)
-            (stdout, stderr) = STREAM.run(capture_stdout=True, capture_stderr=True)
-            print(stderr.decode("utf-8")) # ffmpeg pipes everything to stderr
         else:
             print("Invalid file extension")
+            return
+
+        (stdout, stderr) = STREAM.run(capture_stdout=True, capture_stderr=True)
+        print(stderr.decode("utf-8")) # ffmpeg pipes everything to stderr
 
 # Read config file for settings
 def readSettings(settings):
