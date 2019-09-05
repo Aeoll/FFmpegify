@@ -39,13 +39,12 @@ class FFMPEGIFY():
         self.AUDIO = False
         self.AUDIO_OFFSET = int(config['audiooffset'])
 
+        self.isVidOut = True # Check if being output to video or frames
+        if self.VIDFORMAT not in vids:
+            self.isVidOut = False
+
 
     def convert(self, path, config):
-        # Check if being output to video or frames
-        isVidOut = True
-        if self.VIDFORMAT not in vids:
-            isVidOut = False
-
         infile = pathlib.Path(path)
         saveDir = infile  # set the directory to save the output to
 
@@ -109,7 +108,7 @@ class FFMPEGIFY():
                 outname = re.sub(r'\W+', '_', outname)
 
                 outputf = str(saveDir.with_name('_' + outname + "_video." + self.VIDFORMAT))
-                if not isVidOut:
+                if not self.isVidOut:
                     outputf = str(saveDir.with_name('_' + preframepart + "_" + padstring + "." + self.VIDFORMAT))
 
                 # if the video already exists create do not overwrite it
@@ -175,7 +174,7 @@ class FFMPEGIFY():
                         cmd.extend(('-i', str(tracks[0])))
                 except:
                     pass
-                if isVidOut:
+                if self.isVidOut:
                     # Codecs TODO DNxHR and ProRes?
                     if self.CODEC == "H.264":
                         cmd.extend(('-c:v', 'libx264'))
@@ -191,7 +190,7 @@ class FFMPEGIFY():
 
                 if self.MAX_FRAMES > 0:
                     cmd.extend(('-vframes', str(self.MAX_FRAMES)))
-                if isVidOut:
+                if self.isVidOut:
                     if self.PREMULT:
                         cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
                     else:
