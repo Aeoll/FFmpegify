@@ -6,18 +6,17 @@ import sys
 import glob
 import os
 import subprocess
-from pathlib import *
+from pathlib import Path
 import time
 import json
 import ffmpeg
 
 
-standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
-gamma = ['.exr', '.tga']
-alltypes = standard + gamma
-vid_suff = ['.mov', '.mp4', '.webm', '.mkv', '.avi'] # do vid-vid conversion with audio as well?
-vids = ['mov', 'mp4', 'mp4-via-jpg', 'webm']
-
+standardImg = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
+linearImg = ['.exr', '.tga']
+imgTypes = standardImg + linearImg
+vidTypes = ['.mov', '.mp4', '.webm', '.mkv', '.avi'] # do vid-vid conversion with audio as well?
+vidOutput = ['mov', 'mp4', 'mp4-via-jpg', 'webm']
 
 
 class FFMPEGIFY():
@@ -37,13 +36,25 @@ class FFMPEGIFY():
         self.GAMMA = config['gamma']
         self.PREMULT = int(config['premult'])
         self.NAME_LEVELS = int(config['namelevels'])  # Create output file in higher-up directories
-        self.AUDIO = False
+        self.USE_AUDIO = int(config['useaudio'])
+        self.AUDIO = None
         self.AUDIO_OFFSET = int(config['audiooffset'])
 
+
+        self.STREAMINFO = None
+        self.AUDIOINFO = None
+
         self.isVidOut = True # Check if being output to video or frames
-        if self.VIDFORMAT not in vids:
+        if self.VIDFORMAT not in vidOutput:
             self.isVidOut = False
 
+    def get_metadata(self, inputf):
+        # Use ffprobe to load metadata
+        print(inputf)
+        ffprobeInfo = ffmpeg.probe(str(inputf))
+        self.STREAMINFO = ffprobeInfo['streams'][0]
+        if ffprobeInfo['format']['nb_streams'] > 1:
+            self.AUDIOINFO = ffprobeInfo['streams'][1]
 
     def get_input_file(self, path):
         # Parse filename
@@ -52,7 +63,7 @@ class FFMPEGIFY():
             files = os.listdir(path)
             for f in files:
                 fpath = pathlib.Path(f)
-                if fpath.suffix in alltypes:
+                if fpath.suffix in imgTypes:
                     infile = infile.joinpath(fpath)
                     break
         return infile
@@ -94,7 +105,7 @@ class FFMPEGIFY():
         l = len(stem)
         back = stem[::-1]
         m = re.search('\d+', back)
-        if (m):
+        if m:
             # simple regex match - find digit from the end of the stem
             sp = m.span(0)
             sp2 = [l - a for a in sp]
@@ -121,26 +132,8 @@ class FFMPEGIFY():
 
 
 
-            # ============================================
-            # FFPROBE - Probably easier to use this metadata
-            # =============================================
-            # ffprobe = ['ffprobe']
-            # ffprobe.extend(('-v', 'quiet'))
-            # ffprobe.extend(('-print_format', 'json'))
-            # ffprobe.append(str(infile))
-            # ffprobe.append('-show_format')
-            # ffprobe.append('-show_streams')
-            # ffpr = subprocess.check_output(ffprobe)
-            # ffjson = json.loads(ffpr)
-            # IN_W = ffjson['streams'][0]['coded_width']
-            # IN_H = ffjson['streams'][0]['coded_height']
-            # IN_DURATION = ffjson['streams'][0]['duration']
-            # IN_FRAMES = int(ffjson['streams'][0]['nb_frames'])
-            # IN_FPS = ffjson['streams'][0]['r_frame_rate']
-            # ===================================
 
-
-            if suffix in gamma:
+            if suffix in linearImg:
                 IN_ARGS['gamma'] = self.GAMMA
             IN_ARGS['start_number'] = str(start_num).zfill(padding)
             IN_ARGS['framerate'] = str(self.FRAME_RATE)
@@ -157,51 +150,53 @@ class FFMPEGIFY():
             tracks.extend(sorted(infile.parent.glob('*.mp3')))
             tracks.extend(sorted(infile.parent.glob('*.wav')))
             # also search immediate parent?
-            tracks.extend(sorted(infile.parents[1].glob('*.mp3')))
-            tracks.extend(sorted(infile.parents[1].glob('*.wav')))
-            if (tracks):
-                self.AUDIO = True
-                # audio track offset - add controls for this?
-                return STREAM.input(str(tracks[0]), {'itsoffset': str(self.AUDIO_OFFSET)})
+            # tracks.extend(sorted(infile.parents[1].glob('*.mp3')))
+            # tracks.extend(sorted(infile.parents[1].glob('*.wav')))
+            if (tracks and self.USE_AUDIO):
+                self.AUDIO = ffmpeg.input(str(tracks[0]), **{'itsoffset': str(self.AUDIO_OFFSET)})
+                print("Found audio tracks: " + str(tracks))
         except Exception as e:
             print("Error adding audio: " + str(e))
-        return STREAM
 
 
     def add_scaling(self, STREAM):
-
         scalekw = {}
-        downscale_w = "'min(" + str(self.MAX_WIDTH) + ",trunc(iw/2)*2)'"
-        downscale_h = "min'(" + str(self.MAX_HEIGHT) + ",trunc(ih/2)*2)'"
+        scalekw['out_color_matrix'] = "bt709"
+        iw = self.STREAMINFO['coded_width']
+        ih = self.STREAMINFO['coded_height']
+        # Round to even pixel dimensions
+        rounded_w = iw - (iw % 2)
+        rounded_h  = ih - (ih % 2)
+        downscale_w = min(self.MAX_WIDTH, rounded_w)
+        downscale_h = min(self.MAX_HEIGHT, rounded_h)
 
-        # Video scaling. Want to guarantee even dimensions even if max_width and max_height aren't specified.
-        # TODO replace some of this stuff with a crop filter.
+        print("iw: {}    ih: {}      downscale_w: {}      downscale_h: {}".format(iw, ih, downscale_w, downscale_h))
+
+        # If no max dim just crop odd pixels
         if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
-            scale = ['trunc(iw/2)*2', 'trunc(ih/2)*2']
-        elif self.MAX_WIDTH <= 0:
+            scale = [rounded_w, rounded_h]
+            return STREAM.filter('crop', scale[0], scale[1])
+
+        if (self.MAX_WIDTH) > 0 and (self.MAX_HEIGHT > 0):
+            # The smaller downscale_w / rounded_w, the more extreme the cropping (1.0 means no cropping)
+            # If width cropping is more extreme, we can set height cropping to 0
+            if (downscale_w / rounded_w) > (downscale_h / rounded_h):
+                self.MAX_WIDTH = 0
+            else:
+                self.MAX_HEIGHT = 0
+
+        if self.MAX_WIDTH == 0:
             scale = ["-2", downscale_h]
-            # maintain original aspect ratio
-            scalekw["force_original_aspect_ratio"] = "decrease"
-        elif self.MAX_HEIGHT <= 0:
+        elif self.MAX_HEIGHT == 0:
             scale = [downscale_w, "-2"]
-        else:
-            # Original method
-            # scale = [downscale_w, downscale_h]
-            # scalekw["force_original_aspect_ratio"] = "decrease"
-            # scalekw["pad"] = str(MAX_WIDTH) + ":" + str(MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
-            # This currently causes issues if the W or H are greater than the max and the
-            # other dimension is no longer divisible by 2 when scaled down, so add padding.
-            max_asp = float(MAX_WIDTH)/MAX_HEIGHT
-            A = downscale_w
-            B = "if(gt(ih,"+str(MAX_HEIGHT)+"), trunc(("+str(MAX_HEIGHT)+"*dar)/2)*2, -2)"
-            C = "if(gt(iw,"+str(MAX_WIDTH)+ "), trunc(("+str(MAX_WIDTH) +"*dar)/2)*2, -2)"
-            D = downscale_h
-            scale = ["'if( gt(dar,"+str(max_asp)+"), "+ A +", "+B+")'", "'if( gt(dar,"+str(max_asp)+"), "+C+", "+D+" )'"]
+        # else:
+        #     scale = [downscale_w, downscale_h]
+        #     scalekw["force_original_aspect_ratio"] = "decrease"
+
+        return STREAM.filter('scale', scale[0], scale[1], **scalekw)
 
 
-        STREAM = STREAM.filter('scale', scale[0], scale[1], **scalekw)
 
-        return STREAM
 
 
     def build_output(self, infile, STREAM):
@@ -217,6 +212,9 @@ class FFMPEGIFY():
                 OUT_ARGS['pix_fmt'] ="yuv420p"
                 OUT_ARGS['crf'] = str(self.CRF)
                 OUT_ARGS['preset']  = self.PRESET
+                OUT_ARGS['x264opts'] = 'colorprim=bt709:transfer=bt709:colormatrix=smpte170m'
+                OUT_ARGS['max_muxing_queue_size'] = 4096
+                # OUT_ARGS['color_primaries'] = 'bt709'
                 # Colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
                 # John Carmack blogpost: https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
                 # OUT_ARGS['vcodec'] = 'libx264rgb'
@@ -227,15 +225,16 @@ class FFMPEGIFY():
                 OUT_ARGS['profile']  = 'dnxhr_hq'
             else:
                 pass
+            if self.VIDFORMAT == 'webm':
+                # Possibly implement two-pass for webm
+                OUT_ARGS = dict()
+                OUT_ARGS['crf'] = str(self.CRF)
+                OUT_ARGS['vcodec'] = "libvpx-vp9"
+                OUT_ARGS['b:v'] = 0
+
+
         elif self.VIDFORMAT == 'jpg':
             OUT_ARGS['q:v'] = '2'
-
-        if self.VIDFORMAT == 'webm':
-            # Possibly implement two-pass for webm
-            OUT_ARGS = dict()
-            OUT_ARGS['crf'] = str(self.CRF)
-            OUT_ARGS['vcodec'] = "libvpx"
-            OUT_ARGS['b:v'] = 0
 
 
         if self.MAX_FRAMES > 0:
@@ -251,12 +250,15 @@ class FFMPEGIFY():
 
         # Add audio options if audio stream added
         if self.AUDIO:
-            OUT_ARGS['c:a': 'aac']
-            OUT_ARGS['b:a': '320k']
-            OUT_ARGS['shortest': None]
-
-
-        STREAM = STREAM.output(outputf, **OUT_ARGS)
+            OUT_ARGS['c:a'] = 'aac'
+            OUT_ARGS['b:a'] = '320k'
+            OUT_ARGS['shortest'] = None
+            STREAM = STREAM.output(self.AUDIO, outputf, **OUT_ARGS)
+            print("GOT AUDIO")
+        else:
+            OUT_ARGS['an'] = None
+            STREAM = STREAM.output(outputf, **OUT_ARGS)
+            print("NO AUDIO")
 
         return STREAM
 
@@ -269,52 +271,70 @@ class FFMPEGIFY():
         # ==================================
         stem = infile.stem
         saveDir = infile
-        STREAM = ffmpeg.input(infile)
+        STREAM = ffmpeg.input(str(infile))
+        audio_in = STREAM.audio
 
         OUT_ARGS = dict()
-        if self.CODEC == "H.264":
-            OUT_ARGS['vcodec'] = "libx264"
-            OUT_ARGS['pix_fmt'] = 'yuv420p'
-            OUT_ARGS['crf'] = str(self.CRF)
-            OUT_ARGS['preset'] = self.PRESET
-        outputf = str(saveDir.with_name(stem + "_converted." + self.VIDFORMAT))
-        STREAM = STREAM.output(outputf, **OUT_ARGS)
+        if self.isVidOut:
+            template = "_converted."
+            if self.CODEC == "H.264":
+                OUT_ARGS['vcodec'] = "libx264"
+                OUT_ARGS['pix_fmt'] = 'yuv420p'
+                OUT_ARGS['crf'] = str(self.CRF)
+                OUT_ARGS['preset'] = self.PRESET
+                OUT_ARGS['vprofile'] = "baseline"
+            if not self.AUDIOINFO:
+                OUT_ARGS['an'] = None
+                print("NO AUDIO")
+        else:
+            template = "_converted.%04d." # Output image sequence
 
+        STREAM = self.add_scaling(STREAM)
+        OUT_ARGS["sws_flags"] = self.SCALER
+
+        outputf = str(saveDir.with_name(stem + template + self.VIDFORMAT))
+        STREAM = ffmpeg.output(STREAM, audio_in, outputf, **OUT_ARGS)
         return STREAM
 
 
     def convert(self, path):
         infile = self.get_input_file(path)
-        suffix = infile.suffix
-        if (suffix in alltypes):
+        self.get_metadata(infile)
+        suffix = str(infile.suffix)
+        if (suffix in imgTypes):
             STREAM = self.input_stream(infile)
             if not STREAM:
                 print("Cannot find valid input file.")
                 return
-            STREAM = self.add_audio(infile, STREAM)
+            self.add_audio(infile, STREAM)
             STREAM = self.build_output(infile, STREAM)
-        elif suffix in vid_suff:
+        elif (suffix in vidTypes):
             STREAM = self.video_to_video(infile)
         else:
-            print("Invalid file extension")
+            print("Invalid file extension: " + str(suffix))
             return
 
+        print(" ".join(STREAM.compile()))
         (stdout, stderr) = STREAM.run(capture_stdout=True, capture_stderr=True)
-        print(stderr.decode("utf-8")) # ffmpeg pipes everything to stderr
+        print(stderr.decode("utf-8"))
 
 # Read config file for settings
 def readSettings(settings):
     try:
         with open(settings, 'r') as f:
             config = json.load(f)
+            return config
     except Exception as e:
         print(e)
-    f.close()
-    return config
 
 if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
     config = readSettings(path)
     F = FFMPEGIFY(config)
-    F.convert(sys.argv[1])
-    # input()
+    try:
+        F.convert(sys.argv[1])
+    except Exception as e:
+        import traceback
+        traceback.print_exc(file=sys.stdout)
+
+    input()

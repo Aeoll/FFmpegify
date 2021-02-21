@@ -117,6 +117,14 @@ class Example(QDialog):
         self.namelevels_widget.setValue(int(self.cf['namelevels']))
         layout.addRow(self.namelevels_label, self.namelevels_widget)
 
+        # AUDIO
+        self.audio_label = QLabel("Enable Audio")
+        self.audio_widget = QCheckBox()
+        self.audio_widget.setTristate(False)
+        self.audio_widget.setCheckState(int(self.cf['useaudio']))
+        layout.addRow(self.audio_label, self.audio_widget)
+
+
         # AUDIO OFFSET
         self.audiooffset_label = QLabel("Audio Offset (Seconds)")
         self.audiooffset_widget = QSpinBox()
@@ -177,6 +185,7 @@ class Example(QDialog):
         cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()
         cfg['namelevels'] = str(self.namelevels_widget.value())
+        cfg['useaudio'] = str(self.audio_widget.value())
         cfg['audiooffset'] = str(self.audiooffset_widget.value())
         with open(Path(self.loc).with_name('settings.json'), 'w') as f:
             json.dump(cfg, f)
