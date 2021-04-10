@@ -1,21 +1,21 @@
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
+from PySide2.QtGui import *
+from PySide2.QtWidgets import *
+from PySide2.QtCore import *
 import os
 import sys
 import json
 from pathlib import *
 
-# So much boilerplate...Wow.. Just use Qt Designer...?
-class Example(QDialog):
+class FFMPEGIFY_CONFIGURE(QDialog):
     presets = ["ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow", "slower", "veryslow"]
     formats = ["mov", "mp4", "webm", "png", "tiff", "jpg"]
-    codecs = ["H.264", "DNxHR"]
+    codecs = ["H.264", "ProResHQ"]
     scalers = ["bicubic", "bilinear", "lanczos", "neighbor"]
 
-    def __init__(self, ffmpegify_loc):
+    def __init__(self, settings_file):
         super().__init__()
-        self.loc = ffmpegify_loc
+        self.settings_file = settings_file
+        self.settings_file_fallback = str(Path(os.path.dirname(os.path.realpath(__file__))).joinpath("settings.json"))
         self.initUI()
 
     def initUI(self):
@@ -83,7 +83,7 @@ class Example(QDialog):
         self.premult_label = QLabel("Premultiply Alpha")
         self.premult_widget = QCheckBox()
         self.premult_widget.setTristate(False)
-        self.premult_widget.setCheckState(int(self.cf['premult']))
+        self.premult_widget.setChecked(self.cf['premult']=="True")
         layout.addRow(self.premult_label, self.premult_widget)
 
         # PRESET
@@ -121,9 +121,8 @@ class Example(QDialog):
         self.audio_label = QLabel("Enable Audio")
         self.audio_widget = QCheckBox()
         self.audio_widget.setTristate(False)
-        self.audio_widget.setCheckState(int(self.cf['useaudio']))
+        self.audio_widget.setChecked(self.cf['useaudio']=="True")
         layout.addRow(self.audio_label, self.audio_widget)
-
 
         # AUDIO OFFSET
         self.audiooffset_label = QLabel("Audio Offset (Seconds)")
@@ -148,7 +147,7 @@ class Example(QDialog):
         mainlayout.addWidget(self.bbox)
 
         self.setLayout(mainlayout)
-        self.setGeometry(300, 300, 250, 150)
+        self.setGeometry(350, 300, 250, 150)
         self.setWindowTitle('FFmpegify Settings')
         self.show()
 
@@ -157,7 +156,7 @@ class Example(QDialog):
         geom = self.frameGeometry()
         geom.moveCenter(QCursor.pos())
         self.setGeometry(geom)
-        super(Example, self).showEvent(event)
+        super(FFMPEGIFY_CONFIGURE, self).showEvent(event)
 
     # Prevent hitting Enter from pressing OK button
     def keyPressEvent(self, event):
@@ -165,8 +164,13 @@ class Example(QDialog):
                 pass
 
     def readSettings(self):
-        with open(Path(self.loc).with_name('settings.json'), 'r') as f:
-            config = json.load(f)
+        try:
+            with open(self.settings_file, 'r') as f:
+                config = json.load(f)
+        except:
+            print("couldn't read custom settings file - using default")
+            with open(self.settings_file_fallback, 'r') as f:
+                config = json.load(f)
         return config
 
     # Connect to OK button
@@ -180,20 +184,50 @@ class Example(QDialog):
         cfg['scaler'] = self.scaler_widget.currentText()
         cfg['quality'] = str(self.cf_widget.value())
         cfg['gamma'] = str(self.gamma_widget.value())
-        cfg['premult'] = str(self.premult_widget.checkState())
+        cfg['premult'] = "True" if self.premult_widget.isChecked() else "False"
         cfg['preset'] = self.preset_widget.currentText()
         cfg['codec'] = self.codec_widget.currentText()
         cfg['format'] = self.format_widget.currentText()
         cfg['namelevels'] = str(self.namelevels_widget.value())
-        cfg['useaudio'] = str(self.audio_widget.value())
+        cfg['useaudio'] = "True" if self.audio_widget.isChecked() else "False"
         cfg['audiooffset'] = str(self.audiooffset_widget.value())
-        with open(Path(self.loc).with_name('settings.json'), 'w') as f:
-            json.dump(cfg, f)
+
+        sf = Path(self.settings_file)
+        if not sf.exists():
+            anchor = Path(sf.anchor)
+            if anchor.exists():
+                print(str(self.settings_file))
+                sf.parent.mkdir(parents=True, exist_ok=True)
+            else:
+                print("unable to create settings file in custom location - using default location")
+                self.settings_file = self.settings_file_fallback
+
+        with open(self.settings_file, 'w') as f:
+            json.dump(cfg, f, indent=4, sort_keys=False)
         self.accept()
+
+# =================================================================
+# Configuration and main entry point
+# =================================================================
+
+from configparser import ConfigParser
+
+def get_settings_file(config_file):
+    settings_file_default = config_file.with_name("settings.json")
+    config = ConfigParser()
+    config.read(str(config_file))
+
+    # set  the custom settings json file if it exists
+    settings_file = config.get('config', 'settings')
+    return str(settings_file)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ffmpegify_loc = sys.argv[0]
-    ex = Example(ffmpegify_loc)
+    app.setStyle("Fusion")
+
+    path = Path(sys.argv[0])
+    settings_file = get_settings_file(path.with_name("config.ini"))
+
+    ex = FFMPEGIFY_CONFIGURE(settings_file)
     ex.show()
     sys.exit(app.exec_())
