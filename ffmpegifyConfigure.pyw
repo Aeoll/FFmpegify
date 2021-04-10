@@ -218,8 +218,11 @@ def get_settings_file(config_file):
     config.read(str(config_file))
 
     # set  the custom settings json file if it exists
-    settings_file = config.get('config', 'settings')
-    return str(settings_file)
+    try:
+        settings_file = config.get('config', 'settings')
+        return str(settings_file)
+    except:
+        return str(settings_file_default)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

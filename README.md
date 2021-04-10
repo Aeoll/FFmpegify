@@ -3,7 +3,7 @@
 A Context Menu script for fast conversion of image sequences to videos, or videos to other formats
 - Supports JPG, PNG, TIFF, TGA and EXR sequence image inputs, and MOV and MP4 video inputs
 - Supports arbitrary starting frame numbers and frame number padding
-- Supports MOV, MP4, PNG Sequence and TIFF Sequence outputs
+- Supports MOV, MP4, PNG Sequence and PNG, JPG, TIFF sequence outputs
 - Option for maximum output width and height (maintains aspect ratio)
 - Applies a premultiply filter for better conversion of transparent images and gamma adjust linear image sequences (EXR, TGA)
 - Many settings can be adjusted with the 'FFmpegifySettings' dialog accessed by right-clicking an empty area in File Explorer
