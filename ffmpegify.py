@@ -6,69 +6,106 @@ import sys
 import glob
 import os
 import subprocess
-from pathlib import *
+from pathlib import Path
 import time
 import json
+import ffmpeg
 
 
-def convert(path, config):
-    # get config settings
-    START_FRAME = int(config['startFrame'])
-    MAX_FRAMES = int(config['maxFrames'])
-    MAX_WIDTH = int(config['maxWidth'])
-    MAX_HEIGHT = int(config['maxHeight'])
-    SCALER = config['scaler']
-    CRF = int(config['quality'])
-    FRAME_RATE = int(config['FPS'])
-    PRESET = config['preset']
-    CODEC = config['codec']
-    VIDFORMAT = config['format']
-    GAMMA = config['gamma']
-    PREMULT = int(config['premult'])
-    NAME_LEVELS = int(config['namelevels'])
+standardImg = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
+linearImg = ['.exr', '.tga']
+imgTypes = standardImg + linearImg
+vidTypes = ['.mov', '.mp4', '.webm', '.mkv', '.avi'] # do vid-vid conversion with audio as well?
+vidOutput = ['mov', 'mp4', 'mp4-via-jpg', 'webm']
 
-    AUDIO = False
-    AUDIO_OFFSET = int(config['audiooffset'])
 
-    standard = ['.jpg', '.jpeg', '.png', '.tiff', '.tif']
-    gamma = ['.exr', '.tga']
-    alltypes = standard + gamma
-    vid_suff = ['.mov', '.mp4', '.webm', '.mkv', '.avi'] # do vid-vid conversion with audio as well?
+class FFMPEGIFY():
 
-    # Check if being output to video or frames
-    isVidOut = True
-    vids = ['mov', 'mp4', 'mp4-via-jpg']
-    if VIDFORMAT not in vids:
-        isVidOut = False
+    def __init__(self, config):
+        # get config settings
+        self.START_FRAME = int(config['startFrame'])
+        self.MAX_FRAMES = int(config['maxFrames'])
+        self.MAX_WIDTH = int(config['maxWidth'])
+        self.MAX_HEIGHT = int(config['maxHeight'])
+        self.SCALER = config['scaler']
+        self.CRF = int(config['quality'])
+        self.FRAME_RATE = int(config['FPS'])
+        self.PRESET = config['preset']
+        self.CODEC = config['codec']
+        self.VIDFORMAT = config['format']
+        self.GAMMA = config['gamma']
+        self.PREMULT = int(config['premult'])
+        self.NAME_LEVELS = int(config['namelevels'])  # Create output file in higher-up directories
+        self.USE_AUDIO = int(config['useaudio'])
+        self.AUDIO = None
+        self.AUDIO_OFFSET = int(config['audiooffset'])
 
-    file = pathlib.Path(path)
-    saveDir = file  # set the directory to save the output to
 
-    # For Directories
-    if os.path.isdir(path):
-        files = os.listdir(path)
-        for f in files:
-            fpath = pathlib.Path(f)
-            if fpath.suffix in alltypes:
-                file = file.joinpath(fpath)
-                break
-    stem = file.stem
-    suffix = file.suffix
+        self.STREAMINFO = None
+        self.AUDIOINFO = None
 
-    # create ffmpeg command to append to
-    platform = sys.platform
-    if platform == "win32":
-        cmd = ['ffmpeg']
-    elif platform.startswith('linux'):  # full path to ffmpeg for linux
-        cmd = ['/usr/bin/ffmpeg']
-    else:  # full path to ffmpeg for osx
-        cmd = ['/usr/local/bin/ffmpeg']
+        self.isVidOut = True # Check if being output to video or frames
+        if self.VIDFORMAT not in vidOutput:
+            self.isVidOut = False
 
-    if (suffix in alltypes):
+    def get_metadata(self, inputf):
+        # Use ffprobe to load metadata
+        print(inputf)
+        ffprobeInfo = ffmpeg.probe(str(inputf))
+        self.STREAMINFO = ffprobeInfo['streams'][0]
+        if ffprobeInfo['format']['nb_streams'] > 1:
+            self.AUDIOINFO = ffprobeInfo['streams'][1]
+
+    def get_input_file(self, path):
+        # Parse filename
+        infile = pathlib.Path(path)
+        if os.path.isdir(path):
+            files = os.listdir(path)
+            for f in files:
+                fpath = pathlib.Path(f)
+                if fpath.suffix in imgTypes:
+                    infile = infile.joinpath(fpath)
+                    break
+        return infile
+
+
+    def get_output_filename(self, infile):
+        # OUTPUT FILENAME
+        saveDir = infile # naming the video file based on parent dir. Could change this later.
+        parts = infile.parent.parts
+        if (self.NAME_LEVELS > 0):
+            sec = len(parts) - self.NAME_LEVELS
+            parts = parts[sec:]
+            outname = "_".join(parts)
+        else:
+            outname = str(infile.parent)
+        outname = re.sub(r'\W+', '_', outname)
+        outputf = str(saveDir.with_name('_' + outname + "_video." + self.VIDFORMAT))
+        if not self.isVidOut:
+            outputf = str(saveDir.with_name('_' + preframepart + "_" + padstring + "." + self.VIDFORMAT))
+
+        # If the video already exists create do not overwrite it
+        counter = 1
+        while pathlib.Path(outputf).exists():
+            outputf = str(saveDir.with_name('_' + outname + "_video_" + str(counter) + "." + self.VIDFORMAT))
+            counter = counter + 1
+        return outputf
+
+
+    def input_stream(self, infile):
+        # Generate ffmpeg stream
+
+        IN_ARGS = dict() # arguments for input stream (would be placed prior to -i on commandline)
+
+        # Parse input filename for framenumber
+        # simple regex match - find digits at the end of the filename.
+        # Examples: frame.0001.exr, frame0001.exr, frame1.exr
+        stem = infile.stem
+        suffix = infile.suffix
         l = len(stem)
         back = stem[::-1]
         m = re.search('\d+', back)
-        if (m):
+        if m:
             # simple regex match - find digit from the end of the stem
             sp = m.span(0)
             sp2 = [l - a for a in sp]
@@ -77,10 +114,10 @@ def convert(path, config):
             # glob for other frames in the folder and find the first frame to use as start number
             preframepart = stem[0:sp2[0]]
             postframepart = stem[sp2[1]:]
-            frames = sorted(file.parent.glob(preframepart + '*' + postframepart + suffix))
+            frames = sorted(infile.parent.glob(preframepart + '*' + postframepart + suffix))
             start_num = int(frames[0].name[sp2[0]:sp2[1]])
-            if START_FRAME > 0:
-                start_num = START_FRAME
+            if self.START_FRAME > 0:
+                start_num = self.START_FRAME
 
             # get padding for frame num
             padding = sp2[1] - sp2[0]
@@ -89,150 +126,215 @@ def convert(path, config):
             if len(frames[0].name) != len(frames[-1].name):
                 padstring = '%' + 'd'
 
-            # get absolute path to the input file and set the outputfile
+            # get absolute path to the input file
             inputf = stem[0:sp2[0]] + padstring + postframepart + suffix
-            inputf_abs = str(file.with_name(inputf))
+            inputf_abs = str(infile.with_name(inputf))
 
-            # naming the video file based on parent dirs
-            parts = file.parent.parts
-            if (NAME_LEVELS > 0):
-                sec = len(parts) - NAME_LEVELS
-                parts = parts[sec:]
-                outname = "_".join(parts)
+
+
+
+            if suffix in linearImg:
+                IN_ARGS['gamma'] = self.GAMMA
+            IN_ARGS['start_number'] = str(start_num).zfill(padding)
+            IN_ARGS['framerate'] = str(self.FRAME_RATE)
+            STREAM = ffmpeg.input(inputf_abs, **IN_ARGS)
+            return STREAM
+        return None
+
+
+
+    def add_audio(self, infile, STREAM):
+        # AUDIO
+        try:
+            tracks = []
+            tracks.extend(sorted(infile.parent.glob('*.mp3')))
+            tracks.extend(sorted(infile.parent.glob('*.wav')))
+            # also search immediate parent?
+            # tracks.extend(sorted(infile.parents[1].glob('*.mp3')))
+            # tracks.extend(sorted(infile.parents[1].glob('*.wav')))
+            if (tracks and self.USE_AUDIO):
+                self.AUDIO = ffmpeg.input(str(tracks[0]), **{'itsoffset': str(self.AUDIO_OFFSET)})
+                print("Found audio tracks: " + str(tracks))
+        except Exception as e:
+            print("Error adding audio: " + str(e))
+
+
+    def add_scaling(self, STREAM):
+        scalekw = {}
+        scalekw['out_color_matrix'] = "bt709"
+        iw = self.STREAMINFO['coded_width']
+        ih = self.STREAMINFO['coded_height']
+        # Round to even pixel dimensions
+        rounded_w = iw - (iw % 2)
+        rounded_h  = ih - (ih % 2)
+        downscale_w = min(self.MAX_WIDTH, rounded_w)
+        downscale_h = min(self.MAX_HEIGHT, rounded_h)
+
+        print("iw: {}    ih: {}      downscale_w: {}      downscale_h: {}".format(iw, ih, downscale_w, downscale_h))
+
+        # If no max dim just crop odd pixels
+        if self.MAX_HEIGHT <= 0 and self.MAX_WIDTH <= 0:
+            scale = [rounded_w, rounded_h]
+            return STREAM.filter('crop', scale[0], scale[1])
+
+        if (self.MAX_WIDTH) > 0 and (self.MAX_HEIGHT > 0):
+            # The smaller downscale_w / rounded_w, the more extreme the cropping (1.0 means no cropping)
+            # If width cropping is more extreme, we can set height cropping to 0
+            if (downscale_w / rounded_w) > (downscale_h / rounded_h):
+                self.MAX_WIDTH = 0
             else:
-                outname = str(file.parent)
-            outname = re.sub(r'\W+', '_', outname)
+                self.MAX_HEIGHT = 0
 
-            outputf = str(saveDir.with_name('_' + outname + "_video." + VIDFORMAT))
-            if not isVidOut:
-                outputf = str(saveDir.with_name('_' + preframepart + "_" + padstring + "." + VIDFORMAT))
+        if self.MAX_WIDTH == 0:
+            scale = ["-2", downscale_h]
+        elif self.MAX_HEIGHT == 0:
+            scale = [downscale_w, "-2"]
+        # else:
+        #     scale = [downscale_w, downscale_h]
+        #     scalekw["force_original_aspect_ratio"] = "decrease"
 
-            # if the video already exists create do not overwrite it
-            counter = 1
-            while pathlib.Path(outputf).exists():
-                outputf = str(saveDir.with_name('_' + outname + "_video_" + str(counter) + "." + VIDFORMAT))
-                counter = counter + 1
+        return STREAM.filter('scale', scale[0], scale[1], **scalekw)
 
-            # scale down video if the image dimensions exceed the max width or height, while maintaining aspect ratio
-            if MAX_HEIGHT <= 0 and MAX_WIDTH <= 0:
-                scalestr = "scale='trunc(iw/2)*2':'trunc(ih/2)*2'"
-            elif MAX_WIDTH <= 0:
-                scalestr = "scale='-2:min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease"
-            elif MAX_HEIGHT <= 0:
-                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':-2"
+
+
+
+
+    def build_output(self, infile, STREAM):
+        outputf = self.get_output_filename(infile)
+
+        OUT_ARGS = dict()
+
+        if self.isVidOut:
+            # Codecs TODO DNxHR and ProRes?
+            if self.CODEC == "H.264":
+                OUT_ARGS['vcodec'] = 'libx264'
+                OUT_ARGS['vprofile'] ="baseline"
+                OUT_ARGS['pix_fmt'] ="yuv420p"
+                OUT_ARGS['crf'] = str(self.CRF)
+                OUT_ARGS['preset']  = self.PRESET
+                OUT_ARGS['x264opts'] = 'colorprim=bt709:transfer=bt709:colormatrix=smpte170m'
+                OUT_ARGS['max_muxing_queue_size'] = 4096
+                # OUT_ARGS['color_primaries'] = 'bt709'
+                # Colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
+                # John Carmack blogpost: https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                # OUT_ARGS['vcodec'] = 'libx264rgb'
+                # OUT_ARGS['pix_fmt'] ="yuv444p"
+                # OUT_ARGS['pix_fmt'] ="yuvj420p"
+            elif self.CODEC == "DNxHR":
+                OUT_ARGS['vcodec'] = 'dnxhd'
+                OUT_ARGS['profile']  = 'dnxhr_hq'
             else:
-                # this currently causes issues if the W or H are greater than the max, and the other dimension is no longer divisible by 2 when scaled down so pad it
-                scalestr = "scale='min(" + str(MAX_WIDTH) + ",trunc(iw/2)*2)':min'(" + str(MAX_HEIGHT) + ",trunc(ih/2)*2)':force_original_aspect_ratio=decrease,pad=" + str(MAX_WIDTH) + ":" + str(MAX_HEIGHT) + ":(ow-iw)/2:(oh-ih)/2"
-                # maybe skip force ratio and do it manually? DOesnt work yet...
-                max_asp = float(MAX_WIDTH) / MAX_HEIGHT
-                A = "min(trunc(iw/2)*2," + str(MAX_WIDTH) + ")"
-                B = "if( gt(ih," + str(MAX_HEIGHT) + "), trunc((" + str(MAX_HEIGHT) + "*dar)/2)*2, -2 )"
-                C = "if(gt(iw," + str(MAX_WIDTH) + "), trunc((" + str(MAX_WIDTH) + "/dar)/2)*2 ,-2)"
-                D = "min( trunc(ih/2)*2," + str(MAX_HEIGHT) + ")"
-                scalestr = "scale='if( gt(dar," + str(max_asp) + "), " + A + ", " + B + ")':'if( gt(dar," + str(max_asp) + "), " + C + ", " + D + " )'"
-
-            # ============================================
-            # FFPROBE - Probably easier to use this metadata
-            # =============================================
-            # ffprobe = ['ffprobe']
-            # ffprobe.extend(('-v', 'quiet'))
-            # ffprobe.extend(('-print_format', 'json'))
-            # ffprobe.append(str(file))
-            # ffprobe.append('-show_format')
-            # ffprobe.append('-show_streams')
-            # ffpr = subprocess.check_output(ffprobe)
-            # ffjson = json.loads(ffpr)
-            # IN_W = ffjson['streams'][0]['coded_width']
-            # IN_H = ffjson['streams'][0]['coded_height']
-            # IN_DURATION = ffjson['streams'][0]['duration']
-            # IN_FRAMES = int(ffjson['streams'][0]['nb_frames'])
-            # IN_FPS = ffjson['streams'][0]['r_frame_rate']
-            # ===================================
-
-            if (suffix in gamma):
-                cmd.extend(('-gamma', GAMMA))
-            cmd.extend(('-start_number', str(start_num).zfill(padding)))
-            cmd.extend(('-r', str(FRAME_RATE)))
-            cmd.extend(('-i', inputf_abs))
-
-            # AUDIO
-            try:
-                tracks = []
-                tracks.extend(sorted(file.parent.glob('*.mp3')))
-                tracks.extend(sorted(file.parent.glob('*.wav')))
-                # also search immediate parent?
-                tracks.extend(sorted(file.parents[1].glob('*.mp3')))
-                tracks.extend(sorted(file.parents[1].glob('*.wav')))
-                if (tracks):
-                    AUDIO = True
-                    # audio track offset - add controls for this?
-                    cmd.extend(('-itsoffset', str(AUDIO_OFFSET)))
-                    cmd.extend(('-i', str(tracks[0])))
-            except:
                 pass
-            if isVidOut:
-                # Codecs TODO DNxHR and ProRes?
-                if CODEC == "H.264":
-                    cmd.extend(('-c:v', 'libx264'))
-                    cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
-                    # colours are always slightly off... not sure how to fix. libx264rgb seems to help but still not right?
-                    # cmd.extend(('-c:v', 'libx264rgb'))
-                    # cmd.extend(('-pix_fmt', 'yuv444p', '-crf', str(CRF), '-preset', PRESET))
-                elif CODEC == "DNxHR":
-                    cmd.extend(('-c:v', 'dnxhd'))
-                    cmd.extend(('-profile', 'dnxhr_hq'))
-                else:
-                    pass
+            if self.VIDFORMAT == 'webm':
+                # Possibly implement two-pass for webm
+                OUT_ARGS = dict()
+                OUT_ARGS['crf'] = str(self.CRF)
+                OUT_ARGS['vcodec'] = "libvpx-vp9"
+                OUT_ARGS['b:v'] = 0
 
-            if MAX_FRAMES > 0:
-                cmd.extend(('-vframes', str(MAX_FRAMES)))
-            if isVidOut:
-                if PREMULT:
-                    cmd.extend(('-vf', 'premultiply=inplace=1, ' + scalestr)) # premult is causing all the problems?? Leave it off...
-                else:
-                    cmd.extend(('-vf', scalestr))
-            else:
-                cmd.extend(('-vf', scalestr))
-            cmd.extend(('-sws_flags', SCALER))
-            if VIDFORMAT == 'jpg':
-                cmd.extend(('-q:v', '2'))
-            # AUDIO OPTIONS
-            if AUDIO:
-                cmd.extend(('-c:a', 'aac'))
-                cmd.extend(('-b:a', '320k'))
-                cmd.append('-shortest')
-            cmd.append(outputf)
-            subprocess.run(cmd)
+
+        elif self.VIDFORMAT == 'jpg':
+            OUT_ARGS['q:v'] = '2'
+
+
+        if self.MAX_FRAMES > 0:
+            OUT_ARGS['-vframes'] = str(self.MAX_FRAMES)
+
+        # Add premult filter. Maybe causing problems??
+        if self.isVidOut and self.PREMULT:
+            STREAM = STREAM.filter('premultiply', inplace="1")
+
+        # Add scaling
+        STREAM = self.add_scaling(STREAM)
+        OUT_ARGS["sws_flags"] = self.SCALER
+
+        # Add audio options if audio stream added
+        if self.AUDIO:
+            OUT_ARGS['c:a'] = 'aac'
+            OUT_ARGS['b:a'] = '320k'
+            OUT_ARGS['shortest'] = None
+            STREAM = STREAM.output(self.AUDIO, outputf, **OUT_ARGS)
+            print("GOT AUDIO")
         else:
-            pass
-    # ==================================
-    # Vid-Vid conversion (with audio)
-    # TODO
-    # ==================================
-    elif suffix in vid_suff:
-        cmd.extend(('-i', file))
-        if CODEC == "H.264":
-            cmd.extend(('-c:v', 'libx264'))
-            cmd.extend(('-pix_fmt', 'yuv420p', '-crf', str(CRF), '-preset', PRESET))
+            OUT_ARGS['an'] = None
+            STREAM = STREAM.output(outputf, **OUT_ARGS)
+            print("NO AUDIO")
 
-        outputf = str(saveDir.with_name(stem + "_converted." + VIDFORMAT))
-        cmd.append(outputf)
-        subprocess.run(cmd)
-    else:
-        print("Invalid file extension")
+        return STREAM
+
+
+
+    def video_to_video(self, infile):
+        # ==================================
+        # Vid-Vid conversion (with audio)
+        # TODO
+        # ==================================
+        stem = infile.stem
+        saveDir = infile
+        STREAM = ffmpeg.input(str(infile))
+        audio_in = STREAM.audio
+
+        OUT_ARGS = dict()
+        if self.isVidOut:
+            template = "_converted."
+            if self.CODEC == "H.264":
+                OUT_ARGS['vcodec'] = "libx264"
+                OUT_ARGS['pix_fmt'] = 'yuv420p'
+                OUT_ARGS['crf'] = str(self.CRF)
+                OUT_ARGS['preset'] = self.PRESET
+                OUT_ARGS['vprofile'] = "baseline"
+            if not self.AUDIOINFO:
+                OUT_ARGS['an'] = None
+                print("NO AUDIO")
+        else:
+            template = "_converted.%04d." # Output image sequence
+
+        STREAM = self.add_scaling(STREAM)
+        OUT_ARGS["sws_flags"] = self.SCALER
+
+        outputf = str(saveDir.with_name(stem + template + self.VIDFORMAT))
+        STREAM = ffmpeg.output(STREAM, audio_in, outputf, **OUT_ARGS)
+        return STREAM
+
+
+    def convert(self, path):
+        infile = self.get_input_file(path)
+        self.get_metadata(infile)
+        suffix = str(infile.suffix)
+        if (suffix in imgTypes):
+            STREAM = self.input_stream(infile)
+            if not STREAM:
+                print("Cannot find valid input file.")
+                return
+            self.add_audio(infile, STREAM)
+            STREAM = self.build_output(infile, STREAM)
+        elif (suffix in vidTypes):
+            STREAM = self.video_to_video(infile)
+        else:
+            print("Invalid file extension: " + str(suffix))
+            return
+
+        print(" ".join(STREAM.compile()))
+        (stdout, stderr) = STREAM.run(capture_stdout=True, capture_stderr=True)
+        print(stderr.decode("utf-8"))
 
 # Read config file for settings
 def readSettings(settings):
     try:
         with open(settings, 'r') as f:
             config = json.load(f)
+            return config
     except Exception as e:
         print(e)
-    f.close()
-    return config
 
 if __name__ == '__main__':
     path = Path(sys.argv[0]).with_name('settings.json')
     config = readSettings(path)
-    convert(sys.argv[1], config)
-    # input()
+    F = FFMPEGIFY(config)
+    try:
+        F.convert(sys.argv[1])
+    except Exception as e:
+        import traceback
+        traceback.print_exc(file=sys.stdout)
+
+    input()
